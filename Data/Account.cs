@@ -7,7 +7,6 @@ namespace MDTadusMod.Data
         public Guid Id { get; set; }
 
         [Required]
-        [EmailAddress]
         public string Email { get; set; }
 
         [Required]
