@@ -36,10 +36,28 @@ namespace MDTadusMod.Services
             var serializer = new XmlSerializer(typeof(List<Account>));
             var xmlContent = await File.ReadAllTextAsync(_accountsFilePath);
 
+            List<Account> accounts;
             using (var stringReader = new StringReader(xmlContent))
             {
-                return (List<Account>)serializer.Deserialize(stringReader);
+                accounts = (List<Account>)serializer.Deserialize(stringReader);
             }
+
+            bool wasModified = false;
+            foreach (var account in accounts)
+            {
+                if (account.Id == Guid.Empty)
+                {
+                    account.Id = Guid.NewGuid();
+                    wasModified = true;
+                }
+            }
+
+            if (wasModified)
+            {
+                await SaveAccountsAsync(accounts);
+            }
+
+            return accounts;
         }
 
         public async Task SaveAccountsAsync(List<Account> accounts)
