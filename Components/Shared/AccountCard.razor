@@ -1,4 +1,4 @@
-﻿@using MDTadusMod.Data
+@using MDTadusMod.Data
 @using MDTadusMod.Services
 @using RotMGAssetExtractor.Model
 @using System.Diagnostics
@@ -194,6 +194,8 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        if (AccountData == null) return;
+        
         if (!string.IsNullOrEmpty(AccountData.LastErrorMessage)) _showWarningMessage = true;
 
         // This runs every time parameters are set. Ideal for parameter-dependent logic.
