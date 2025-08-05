@@ -1,4 +1,6 @@
-﻿namespace MDTadusMod
+﻿using Microsoft.Maui.ApplicationModel;
+
+namespace MDTadusMod
 {
     public partial class App : Application
     {
@@ -18,7 +20,13 @@
             };
         }
 
+        protected override Window CreateWindow(IActivationState activationState)
+        {
+            var window = base.CreateWindow(activationState);
 
+            window.Title = AppInfo.Current.Name;
 
+            return window;
+        }
     }
 }

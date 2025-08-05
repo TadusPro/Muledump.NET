@@ -22,7 +22,7 @@
         <Nullable>enable</Nullable>
 
         <!-- Display name -->
-        <ApplicationTitle>MDTadusMod</ApplicationTitle>
+        <ApplicationTitle>Muledump</ApplicationTitle>
 
         <!-- App Identifier -->
         <ApplicationId>com.companyname.mdtadusmod</ApplicationId>
