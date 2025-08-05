@@ -1,5 +1,7 @@
 ﻿/* ── OptionsMenu.razor.css (replace everything) ────────────── */
-
+span {
+    color: #CCC;
+}
 /* nav button */
 .nav-item {
     display: inline-block;

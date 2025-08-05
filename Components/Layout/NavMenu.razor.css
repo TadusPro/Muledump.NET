@@ -26,7 +26,7 @@
     font-size: 14px;
 }
 
-.nav-item ::deep .nav-link.active {
+.nav-item ::deep .nav-link.active:not(.no-active) {
     color: #FFFFFF;
     font-weight: bold;
 }

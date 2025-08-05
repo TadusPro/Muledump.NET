@@ -1,0 +1,101 @@
+﻿.main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+table{
+    width: max-content;
+    align-content:center;
+    border-spacing: 5px;
+}
+td{
+    padding: 0;
+}
+input {
+    font-size: 12px;
+    border: #707070 solid 2px;
+    background-color: #333;
+    padding: 3px;
+    color: #ffffff;
+    outline: none;
+}
+button {
+    color: #CCC;
+    background-color: #333;
+    height: 24px;
+    float: left;
+    border: #707070 solid 2px;
+    text-align: center;
+    vertical-align: middle;
+    padding: 0 5px;
+    font-size: 12px;
+    cursor: pointer;
+    width: 25px;
+}
+
+.editbtn:hover, .btn-add-new:hover {
+    background-color: #040f51;
+    color: #22b7da;
+}
+.deletebtn:hover {
+    background-color: #6e070a;
+    color: #fd0005;
+}
+.move-buttons {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    height: 24px;
+}
+    .move-buttons.first-item {
+        justify-content: flex-end;
+    }
+
+    .move-buttons.last-item {
+        justify-content: flex-start;
+    }
+
+.btn-move {
+    height: 12px;
+    width: 8px;
+    border: none;
+    background-color: transparent;
+    font-size:7px;
+    padding:0;
+}
+    .btn-move:hover {
+        color: #22b7da;
+    }
+
+.table-container {
+    margin: 0 auto;
+    width: fit-content;
+}
+
+h1 {
+    text-align: left;
+    margin-left: 18px
+}
+
+.controls-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    justify-content: space-between;
+    padding-left: 18px; /* Adds 20px of padding on the left and right */
+    padding-right: 5px; /* Adds 20px of padding on the left and right */
+    box-sizing: border-box; /* Ensures padding is included in the element's total width */
+}
+
+.btn-add-new {
+    width: fit-content;
+    border: #004db4 solid 2px;
+    background-color: #0e1622;
+    color: #2386ff;
+}
+
+
+

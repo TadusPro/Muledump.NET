@@ -1,0 +1,116 @@
+﻿@page "/settings/accounts"
+@inject Services.AccountService AccountSvc
+@inject NavigationManager Navigation
+
+<div class="main">
+    @if (accounts == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <div class="table-container">
+            <h1>Accounts Manager</h1>
+            <table>
+                <tbody>
+                    @foreach (var account in filteredAccounts)
+                    {
+                        <tr>
+                            <td>
+                                @{
+                                    var index = accounts.IndexOf(account);
+                                    var isFirst = index == 0;
+                                    var isLast = index == accounts.Count - 1;
+                                    var moveButtonClass = "move-buttons";
+                                    if (isFirst) { moveButtonClass += " first-item"; }
+                                    else if (isLast) { moveButtonClass += " last-item"; }
+                                }
+                                <div class="@moveButtonClass">
+                                    @if (!isFirst)
+                                    {
+                                        <button class="btn-move" @onclick="() => MoveUp(account)">▲</button>
+                                    }
+                                    @if (!isLast)
+                                    {
+                                        <button class="btn-move" @onclick="() => MoveDown(account)">▼</button>
+                                    }
+                                </div>
+                            </td>
+                            <td>
+                                <input value="@account.Email" readonly>
+                            </td>
+                            <td>
+                                <input value="@account.Password" type="password" readonly>
+                            </td>
+                            <td>
+                                <button class="editbtn" @onclick="() => EditAccount(account.Id)">≡</button>
+                            </td>
+                            <td>
+                                <button class="deletebtn" @onclick="() => DeleteAccount(account.Id)">✖</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="controls-container">
+                <input class="search-bar" type="text" placeholder="Search..." @bind="searchTerm" @bind:event="oninput" />
+                <button class="btn-add-new" @onclick="AddNewAccount">Add New Account</button>
+            </div>
+        </div>
+
+    }
+</div>
+
+@code {
+    private List<MDTadusMod.Data.Account> accounts;
+    private string searchTerm = string.Empty;
+
+    private IEnumerable<MDTadusMod.Data.Account> filteredAccounts =>
+        accounts?.Where(a => string.IsNullOrWhiteSpace(searchTerm) ||
+                             a.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ?? Enumerable.Empty<MDTadusMod.Data.Account>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        accounts = await AccountSvc.GetAccountsAsync();
+    }
+
+    private void AddNewAccount()
+    {
+        Navigation.NavigateTo("/settings/accounts/new");
+    }
+
+    private void EditAccount(Guid accountId)
+    {
+        Navigation.NavigateTo($"/settings/accounts/edit/{accountId}");
+    }
+    private async Task DeleteAccount(Guid accountId)
+    {
+        var account = accounts.FirstOrDefault(a => a.Id == accountId);
+        if (account != null)
+        {
+            await AccountSvc.DeleteAccountAsync(accountId);
+            accounts.Remove(account);
+            StateHasChanged();
+        }
+    }
+
+    private async Task MoveUp(MDTadusMod.Data.Account account)
+    {
+        var index = accounts.IndexOf(account);
+        if (index > 0)
+        {
+            (accounts[index], accounts[index - 1]) = (accounts[index - 1], accounts[index]);
+            await AccountSvc.SaveAccountsAsync(accounts);
+        }
+    }
+
+    private async Task MoveDown(MDTadusMod.Data.Account account)
+    {
+        var index = accounts.IndexOf(account);
+        if (index > -1 && index < accounts.Count - 1)
+        {
+            (accounts[index], accounts[index + 1]) = (accounts[index + 1], accounts[index]);
+            await AccountSvc.SaveAccountsAsync(accounts);
+        }
+    }
+}

@@ -1,19 +1,65 @@
 ﻿@using MDTadusMod.Components.Shared
+@inject NavigationManager NavigationManager
+@implements IDisposable
 
 <nav class="flex-column">
     <div class="intro">Muledump Tadusmod</div>
     <div class="right">
-        <OptionsMenu />
-        <div class="nav-item">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                Accounts
-            </NavLink>
-        </div>
-        <div class="nav-item">
-            <NavLink class="nav-link" href="accounts">
-                Manage Accounts
-            </NavLink>
-        </div>
+        @if (IsOnSettingsPage())
+        {
+            <div class="nav-item">
+                <NavLink class="nav-link" href="settings/accounts">
+                    Accounts
+                </NavLink>
+            </div>
+            <div class="nav-item">
+                <NavLink class="nav-link" href="settings/groups">
+                    Groups
+                </NavLink>
+            </div>
 
+            <div class="nav-item">
+                <NavLink class="nav-link no-active" href="">
+                    Back
+                </NavLink>
+            </div>
+        }
+        else
+        {
+            <OptionsMenu />
+            <div class="nav-item">
+                <NavLink class="nav-link">
+                    Reload
+                </NavLink>
+            </div>
+            <div class="nav-item">
+                <NavLink class="nav-link" href="settings">
+                    Settings
+                </NavLink>
+            </div>
+        }
     </div>
 </nav>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavigationManager.LocationChanged += HandleLocationChanged;
+    }
+
+    private bool IsOnSettingsPage()
+    {
+        var relativeUri = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        return relativeUri.StartsWith("settings", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= HandleLocationChanged;
+    }
+}

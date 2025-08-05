@@ -1,0 +1,228 @@
+@page "/settings/accounts/edit/{Id:guid}"
+@page "/settings/accounts/new"
+
+@using MDTadusMod.Data
+
+@inject Services.AccountService AccountSvc
+@inject NavigationManager NavManager
+@implements IDisposable
+
+<div class="account-edit-container">
+    @if (editContext != null)
+    {
+        <EditForm EditContext="@editContext" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            @if (IsNew)
+            {
+                <div class="new-account-form">
+                    <h1 class="text-center">Accounts Manager</h1>
+                    <div class="horizontal info-bar">
+                        <p class="text-muted">Add a new account</p>
+                        <p class="text-danger">@emailErrorMessage</p>
+                    </div>
+                    <div class="horizontal">
+                        <InputText id="email" @bind-Value="account.Email" class="form-control" placeholder="Email / steamworks" />
+                        <InputText id="password" @bind-Value="account.Password" class="form-control" type="password" placeholder="password / secret" />
+                    </div>
+                    
+                    <div class="horizontal">
+                        <button type="submit" disabled="@isInvalid">Save</button>
+                        <button type="button" class="close" @onclick="Cancel">Back</button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <h1>Accounts Manager</h1>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        @if (!IsNew)
+                        {
+                            <span class="h5">Stars: @(accountData?.Fame ?? 0)</span>
+                        }
+                    </div>
+                    <div class="text-center">
+                        <h3 class="mb-0">@(IsNew ? "Create Account" : account.Email)</h3>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary" disabled="@isInvalid">Save</button>                        
+                        @if (!IsNew)
+                        {
+                            <button type="button" class="btn btn-light" @onclick="MoveUp" disabled="@(isFirstAccount)">Up</button>
+                            <button type="button" class="btn btn-light" @onclick="MoveDown" disabled="@(isLastAccount)">Down</button>
+                            <button type="button" class="btn btn-danger" @onclick="Remove">Remove</button>
+                        }
+                        <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                    </div>
+                </div>
+
+                
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email address</label>
+                    <InputText id="email" @bind-Value="account.Email" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <InputText id="password" @bind-Value="account.Password" class="form-control" type="password" />
+                </div>
+            }
+        </EditForm>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Account account = new();
+    private AccountData accountData;
+    private bool IsNew => Id == Guid.Empty;
+
+    private List<Account> allAccounts;
+    private bool isFirstAccount = true;
+    private bool isLastAccount = true;
+
+    private EditContext editContext;
+    private bool isInvalid = true;
+    private bool hasRendered = false;
+    private ValidationMessageStore messageStore;
+    private string emailErrorMessage = string.Empty;
+
+    private async void HandleFieldChanged(object sender, FieldChangedEventArgs e)
+    {
+        messageStore.Clear(e.FieldIdentifier);
+        emailErrorMessage = string.Empty;
+
+        bool isModelValid = editContext.Validate();
+
+        if (e.FieldIdentifier.FieldName == nameof(Account.Email))
+        {
+            var accounts = await AccountSvc.GetAccountsAsync();
+            if (accounts.Any(a => a.Email.Equals(account.Email, StringComparison.OrdinalIgnoreCase) && a.Id != account.Id))
+            {
+                emailErrorMessage = "Email is already in use.";
+                messageStore.Add(e.FieldIdentifier, emailErrorMessage);
+                isModelValid = false;
+            }
+        }
+
+        isInvalid = !isModelValid;
+        StateHasChanged();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsNew)
+        {
+            account = new();
+        }
+        else
+        {
+            allAccounts = await AccountSvc.GetAccountsAsync();
+            account = allAccounts.FirstOrDefault(a => a.Id == Id) ?? new();
+            if (account != null)
+            {
+                accountData = await AccountSvc.GetAccountDataAsync(account.Id);
+                UpdateAccountPosition();
+            }
+        }
+
+        if (editContext == null || editContext.Model != account)
+        {
+            if (editContext != null)
+            {
+                editContext.OnFieldChanged -= HandleFieldChanged;
+            }
+            editContext = new(account);
+            messageStore = new(editContext);
+            editContext.OnFieldChanged += HandleFieldChanged;
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isInvalid = !editContext.Validate();
+            StateHasChanged();
+        }
+    }
+
+    private void UpdateAccountPosition()
+    {
+        if (allAccounts == null || account == null) return;
+        var index = allAccounts.IndexOf(account);
+        isFirstAccount = index <= 0;
+        isLastAccount = index == -1 || index == allAccounts.Count - 1;
+    }
+
+    private async Task MoveUp()
+    {
+        var index = allAccounts.IndexOf(account);
+        if (index > 0)
+        {
+            (allAccounts[index], allAccounts[index - 1]) = (allAccounts[index - 1], allAccounts[index]);
+            await AccountSvc.SaveAccountsAsync(allAccounts);
+            UpdateAccountPosition();
+        }
+    }
+
+    private async Task MoveDown()
+    {
+        var index = allAccounts.IndexOf(account);
+        if (index > -1 && index < allAccounts.Count - 1)
+        {
+            (allAccounts[index], allAccounts[index + 1]) = (allAccounts[index + 1], allAccounts[index]);
+            await AccountSvc.SaveAccountsAsync(allAccounts);
+            UpdateAccountPosition();
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var accounts = await AccountSvc.GetAccountsAsync();
+        if (IsNew)
+        {
+            account.Id = Guid.NewGuid();
+            accounts.Add(account);
+        }
+        else
+        {
+            var existingAccount = accounts.FirstOrDefault(a => a.Id == account.Id);
+            if (existingAccount != null)
+            {
+                existingAccount.Email = account.Email;
+                existingAccount.Password = account.Password;
+            }
+        }
+
+        await AccountSvc.SaveAccountsAsync(accounts);
+        NavManager.NavigateTo("/settings/accounts");
+    }
+
+    private async Task Remove()
+    {
+        var accounts = await AccountSvc.GetAccountsAsync();
+        var accountToRemove = accounts.FirstOrDefault(a => a.Id == Id);
+        if (accountToRemove != null)
+        {
+            accounts.Remove(accountToRemove);
+            await AccountSvc.SaveAccountsAsync(accounts);
+        }
+        NavManager.NavigateTo("/settings/accounts");
+    }
+
+    private void Cancel()
+    {
+        NavManager.NavigateTo("/settings/accounts");
+    }
+
+    public void Dispose()
+    {
+        if (editContext != null)
+        {
+            editContext.OnFieldChanged -= HandleFieldChanged;
+        }
+    }
+}

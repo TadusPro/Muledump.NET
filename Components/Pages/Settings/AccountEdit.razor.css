@@ -1,0 +1,88 @@
+﻿.account-edit-container {
+    display: flex;
+    justify-content: center;
+}
+
+.new-account-form {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.horizontal {
+    display: flex;
+    /* justify-content: space-between; */ /* Use justify-content to space items horizontally */
+    align-items: center; /* Use align-items to vertically center items in the line */
+    gap: 5px;
+}
+
+.info-bar {
+    justify-content: space-between;
+    white-space: nowrap;
+}
+
+.info-bar p {
+    margin: 0;
+}
+
+.text-danger {
+    color: #dc3545;
+}
+
+.text-muted {
+    color: #6c757d;
+}
+
+p{
+    margin: 0;
+}
+
+
+button {
+    /* float: left; */
+    /* clear: left; */
+    cursor: pointer;
+    font-size: 12px;
+    padding: 3px;
+    color: #00ceff;
+    background-color: #132236;
+    border: #000 solid 2px;
+    box-sizing: border-box;
+    white-space: normal;
+    width: 75px;
+    text-align:center;
+}
+    button:disabled {
+        display: none;
+    }
+
+.close {
+    border: transparent solid 2px;
+    background-color: #333;
+    color: #CCC;
+    width: 50px;
+    margin-left: auto;
+}
+
+::deep .form-control.invalid {
+    border-color: none;
+    box-shadow: none;
+    outline: none;
+}
+::deep .form-control.valid {
+    border-color: none;
+    box-shadow: none;
+    outline: none;
+}
+
+
+::deep .form-control {
+    transition: 0.1s linear;
+    font-size: 12px;
+    width: 200px;
+    border: #707070 solid 2px;
+    background-color: #333;
+    padding: 3px;
+    color: #ffffff;
+    outline: none;
+}

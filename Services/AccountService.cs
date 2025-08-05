@@ -115,5 +115,20 @@ namespace MDTadusMod.Services
                 await File.WriteAllTextAsync(filePath, xmlContent);
             }
         }
+        public async Task DeleteAccountAsync(Guid accountId)
+        {
+            var accounts = await GetAccountsAsync();
+            var accountToRemove = accounts.FirstOrDefault(a => a.Id == accountId);
+            if (accountToRemove != null)
+            {
+                accounts.Remove(accountToRemove);
+                await SaveAccountsAsync(accounts);
+                var filePath = Path.Combine(_accountDataPath, $"{accountId}.xml");
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+            }
+        }
     }
 }
