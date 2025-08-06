@@ -46,7 +46,7 @@
         public ContainerDisplayType VaultsDisplayType { get; set; } = ContainerDisplayType.Chest;
         public ContainerDisplayType PotionsDisplayType { get; set; } = ContainerDisplayType.Chest;
         public ContainerDisplayType MaterialsDisplayType { get; set; } = ContainerDisplayType.Chest;
-        public ContainerDisplayType SpoilsDisplayType { get; set; } = ContainerDisplayType.Chest;
+        public ContainerDisplayType SpoilsDisplayType { get; set; } = ContainerDisplayType.Summarized;  // Changed to Summarized
         public ContainerDisplayType GiftsDisplayType { get; set; } = ContainerDisplayType.Chest;
         public ContainerDisplayType PetInventoryDisplayType { get; set; } = ContainerDisplayType.Chest;
     }
