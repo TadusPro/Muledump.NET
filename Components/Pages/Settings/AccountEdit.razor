@@ -33,41 +33,32 @@
             }
             else
             {
-                <h1>Accounts Manager</h1>
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        @if (!IsNew)
-                        {
-                            <span class="h5">Stars: @(accountData?.Fame ?? 0)</span>
-                        }
-                    </div>
-                    <div class="text-center">
-                        <h3 class="mb-0">@(IsNew ? "Create Account" : account.Email)</h3>
-                    </div>
-                    <div>
-                        <button type="submit" class="btn btn-primary" disabled="@isInvalid">Save</button>                        
-                        @if (!IsNew)
-                        {
-                            <button type="button" class="btn btn-light" @onclick="MoveUp" disabled="@(isFirstAccount)">Up</button>
-                            <button type="button" class="btn btn-light" @onclick="MoveDown" disabled="@(isLastAccount)">Down</button>
-                            <button type="button" class="btn btn-danger" @onclick="Remove">Remove</button>
-                        }
-                        <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
-                    </div>
-                </div>
+                <div class="new-account-form">
+                    <h1>Accounts Manager</h1>
 
-                
+                    <div class="horizontal info-bar">
+                        @if (!string.IsNullOrEmpty(accountData?.Name))
+                        {
+                            <p class="text-info">ign: @accountData.Name</p>
+                        }
+                        <p class="text-danger">@emailErrorMessage</p>
+                    </div>
 
-                <div class="mb-3">
-                    <label for="email" class="form-label">Email address</label>
-                    <InputText id="email" @bind-Value="account.Email" class="form-control" />
-                </div>
-                <div class="mb-3">
-                    <label for="password" class="form-label">Password</label>
-                    <InputText id="password" @bind-Value="account.Password" class="form-control" type="password" />
+                    <InputText id="email" @bind-Value="account.Email" class="form-control" placeholder="Email / steamworks" />
+
+                    <InputText id="password" type="text" @bind-Value="account.Password" class="form-control" placeholder="New Password" />
+
+                    <div class="horizontal">
+                        <button type="submit" disabled="@(!editContext.IsModified() || isInvalid)">Update</button>
+                        <button type="button" class="close" @onclick="Cancel">Cancel</button>
+                    </div>
                 </div>
             }
         </EditForm>
+    }
+    else if (!IsNew)
+    {
+        <p>Loading account...</p>
     }
 </div>
 
@@ -75,17 +66,12 @@
     [Parameter]
     public Guid Id { get; set; }
 
-    private Account account = new();
+    private Account account;
     private AccountData accountData;
     private bool IsNew => Id == Guid.Empty;
 
-    private List<Account> allAccounts;
-    private bool isFirstAccount = true;
-    private bool isLastAccount = true;
-
     private EditContext editContext;
     private bool isInvalid = true;
-    private bool hasRendered = false;
     private ValidationMessageStore messageStore;
     private string emailErrorMessage = string.Empty;
 
@@ -115,17 +101,20 @@
     {
         if (IsNew)
         {
-            account = new();
+            account = new Account();
         }
         else
         {
-            allAccounts = await AccountSvc.GetAccountsAsync();
-            account = allAccounts.FirstOrDefault(a => a.Id == Id) ?? new();
-            if (account != null)
+            var accounts = await AccountSvc.GetAccountsAsync();
+            account = accounts.FirstOrDefault(a => a.Id == Id);
+
+            if (account == null)
             {
-                accountData = await AccountSvc.GetAccountDataAsync(account.Id);
-                UpdateAccountPosition();
+                NavManager.NavigateTo("/settings/accounts");
+                return;
             }
+
+            accountData = await AccountSvc.GetAccountDataAsync(account.Id);
         }
 
         if (editContext == null || editContext.Model != account)
@@ -142,40 +131,10 @@
 
     protected override void OnAfterRender(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && editContext != null)
         {
             isInvalid = !editContext.Validate();
             StateHasChanged();
-        }
-    }
-
-    private void UpdateAccountPosition()
-    {
-        if (allAccounts == null || account == null) return;
-        var index = allAccounts.IndexOf(account);
-        isFirstAccount = index <= 0;
-        isLastAccount = index == -1 || index == allAccounts.Count - 1;
-    }
-
-    private async Task MoveUp()
-    {
-        var index = allAccounts.IndexOf(account);
-        if (index > 0)
-        {
-            (allAccounts[index], allAccounts[index - 1]) = (allAccounts[index - 1], allAccounts[index]);
-            await AccountSvc.SaveAccountsAsync(allAccounts);
-            UpdateAccountPosition();
-        }
-    }
-
-    private async Task MoveDown()
-    {
-        var index = allAccounts.IndexOf(account);
-        if (index > -1 && index < allAccounts.Count - 1)
-        {
-            (allAccounts[index], allAccounts[index + 1]) = (allAccounts[index + 1], allAccounts[index]);
-            await AccountSvc.SaveAccountsAsync(allAccounts);
-            UpdateAccountPosition();
         }
     }
 
@@ -198,18 +157,6 @@
         }
 
         await AccountSvc.SaveAccountsAsync(accounts);
-        NavManager.NavigateTo("/settings/accounts");
-    }
-
-    private async Task Remove()
-    {
-        var accounts = await AccountSvc.GetAccountsAsync();
-        var accountToRemove = accounts.FirstOrDefault(a => a.Id == Id);
-        if (accountToRemove != null)
-        {
-            accounts.Remove(accountToRemove);
-            await AccountSvc.SaveAccountsAsync(accounts);
-        }
         NavManager.NavigateTo("/settings/accounts");
     }
 

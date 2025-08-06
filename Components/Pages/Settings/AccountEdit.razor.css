@@ -32,6 +32,10 @@
 .text-muted {
     color: #6c757d;
 }
+.text-info {
+    color: #ccc;
+    font-size: 16px;
+}
 
 p{
     margin: 0;
