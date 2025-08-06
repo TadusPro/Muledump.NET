@@ -242,49 +242,101 @@
             var enchantData = enchantList.First();
             if (!string.IsNullOrEmpty(enchantData))
             {
-                return (itemId, GetRarityFromEnchantments(enchantData));
+                return (itemId, GetEnchantCount(enchantData));
             }
         }
         return (itemId, 0);
     }
 
-    private int GetRarityFromEnchantments(string enchantData)
+    private int GetEnchantCount(string enchantData)
     {
-        if (string.IsNullOrEmpty(enchantData)) return 0;
-
-        string standardBase64 = enchantData.Replace('_', '/').Replace('-', '+');
-        int padding = standardBase64.Length % 4;
-        if (padding != 0)
+        var enchants = new List<int>();
+        if (string.IsNullOrEmpty(enchantData))
         {
-            standardBase64 += new string('=', 4 - padding);
-        }
-        if (standardBase64.Length < 4) return 0; // Not enough data to decode
-        try
-        {
-            byte[] decodedBytes = Convert.FromBase64String(standardBase64);
-            using var memoryStream = new MemoryStream(decodedBytes);
-            using var reader = new BinaryReader(memoryStream);
-
-            if (reader.BaseStream.Length < 3) return 0;
-            reader.BaseStream.Position = 3;
-
-            int enchantmentCount = 0;
-            while (reader.BaseStream.Position + 2 <= reader.BaseStream.Length)
-            {
-                ushort enchantId = reader.ReadUInt16();
-                if (enchantId == 0xFFFD) break; // End of enchantments
-                if (enchantId != 0xFFFE) // Not a locked slot
-                {
-                    enchantmentCount++;
-                }
-            }
-            return enchantmentCount;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Failed to parse enchantment data. Error: {ex.Message}");
             return 0;
         }
+
+        byte[] data = Convert.FromBase64String(enchantData.Replace('-', '+').Replace('_', '/'));
+        if (data.Length == 0)
+        {
+            return 0;
+        }
+
+        int index = 0;
+        byte version = data[index];
+        index++;
+
+        const byte GradeId = 1;
+        const byte EnchantmentSlotId = 2;
+        const byte EnchantmentListId = 3;
+        const byte RerollCountId = 4;
+        const byte PowerupInfoId = 5;
+
+        while (index < data.Length)
+        {
+            byte type = data[index];
+            index++;
+
+            switch (type)
+            {
+                case GradeId:
+                    {
+                        byte grade = data[index];
+                        index++;
+                        byte count = data[index];
+                        index++;
+
+                        //skip over key mods
+                        index += count * sizeof(short);
+                        break;
+                    }
+                case EnchantmentSlotId:
+                    {
+                        byte count = data[index];
+                        index++;
+
+                        for (int i = 0; i < count; i++)
+                        {
+                            short enchantmentId = BitConverter.ToInt16(data, index);
+                            index += sizeof(short);
+                            enchants.Add(enchantmentId);
+                        }
+
+                        break;
+                    }
+                case EnchantmentListId:
+                    {
+                        ushort count = BitConverter.ToUInt16(data, index);
+                        index += sizeof(ushort);
+
+                        index += count * sizeof(short);
+
+                        break;
+                    }
+                case RerollCountId:
+                    {
+                        byte rerollCount = data[index];
+                        index++;
+                        break;
+                    }
+                case PowerupInfoId:
+                    {
+                        byte count = data[index];
+                        index++;
+                        for (int i = 0; i < count; i++)
+                        {
+                            byte id = data[index];
+                            index++;
+                            ushort value = BitConverter.ToUInt16(data, index);
+                            index += sizeof(ushort);
+                        }
+
+                        break;
+                    }
+            }
+        }
+
+        return enchants.Count(id => id != -3);
     }
 
     private int CalculateBonusIncrement(FameBonus bonus)
