@@ -1,9 +1,10 @@
 ﻿@using MDTadusMod.Data
 @using MDTadusMod.Services
 @inject SettingsService SettingsManager
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
-<div class="nav-item options-menu">
+<div class="nav-item options-menu" @ref="optionsMenuElement" @onmouseenter="AdjustDropdownPosition">
     <span>Options</span>
     <div class="options-dropdown">
         @if (SettingsManager.GlobalOptions != null)
@@ -207,10 +208,17 @@
 </div>
 
 @code {
+    private ElementReference optionsMenuElement;
+
     protected override void OnInitialized()
     {
         // Subscribe to the OnChange event so the UI re-renders when settings change
         SettingsManager.OnChange += StateHasChanged;
+    }
+
+    private async Task AdjustDropdownPosition()
+    {
+        await JSRuntime.InvokeVoidAsync("adjustDropdown", optionsMenuElement);
     }
 
     private void UpdateOption(string propertyName, object value)
