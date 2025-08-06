@@ -202,19 +202,25 @@
 
     private ContainerDisplayType GetDisplayType(string containerPropertyName)
     {
-        // Special case: Spoils behavior
-        if (containerPropertyName == nameof(ViewOptions.SpoilsDisplayType))
+        // Special case: Potions behavior
+        if (containerPropertyName == nameof(ViewOptions.PotionsDisplayType))
         {
             // If global setting is OFF, always use Summarized for Spoils
             if (!SettingsManager.GlobalSettings.ShowExtendedItemContainerDisplay)
+            {
+                // Debug: Ensure we're returning Summarized when global is OFF
+                Debug.WriteLine($"[GetDisplayType] Spoils: Global setting is OFF, returning Summarized");
                 return ContainerDisplayType.Summarized;
+            }
             
             // If global setting is ON, check the actual value
             var property = typeof(AccountViewOptions).GetProperty(containerPropertyName);
             if (property != null && property.GetValue(ViewOptions) is ContainerDisplayType displayType)
             {
+                Debug.WriteLine($"[GetDisplayType] Spoils: Global setting is ON, returning {displayType}");
                 return displayType;
             }
+            Debug.WriteLine($"[GetDisplayType] Spoils: Using default Summarized");
             return ContainerDisplayType.Summarized; // Default for Spoils
         }
 

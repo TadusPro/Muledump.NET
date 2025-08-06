@@ -3,7 +3,7 @@ namespace MDTadusMod.Data
     public class GlobalSettings
     {
         // Display Settings
-        public bool ShowExtendedItemContainerDisplay { get; set; } = true;
+        public bool ShowExtendedItemContainerDisplay { get; set; } = false;
         public bool GroupRarities { get; set; } = false;
         
         // Add more global settings here as needed
