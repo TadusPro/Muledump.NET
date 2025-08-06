@@ -53,11 +53,13 @@
     @if (ViewOptions.Equipment)
     {
         <ItemContainer Items="EquipmentItems"
-                        NoPadding = "true" />
+                       DisplayType="@GetDisplayType(nameof(ViewOptions.EquipmentDisplayType))"
+                       NoPadding="true" />
     }
     @if (ViewOptions.Inventory)
     {
         <ItemContainer Items="InventoryItems"
+                       DisplayType="@GetDisplayType(nameof(ViewOptions.InventoryDisplayType))"
                        NoPadding="true"/>
     }
 
@@ -214,6 +216,20 @@
         }
 
         InventoryItems = equipment.Skip(4).ToList();
+    }
+
+    private ContainerDisplayType GetDisplayType(string containerPropertyName)
+    {
+        if (!SettingsManager.GlobalSettings.ShowExtendedItemContainerDisplay)
+            return ContainerDisplayType.Chest;
+
+        var property = typeof(AccountViewOptions).GetProperty(containerPropertyName);
+        if (property != null && property.GetValue(ViewOptions) is ContainerDisplayType displayType)
+        {
+            return displayType;
+        }
+
+        return ContainerDisplayType.Chest;
     }
 
     private (int id, int rarity) GetItemDetails(int itemId)

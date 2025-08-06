@@ -26,3 +26,48 @@
     flex-wrap: wrap;
     justify-content: center;
 }
+
+/* Override grid layout when summarized */
+.item-section.summarized-container {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 4px;
+    grid-template-columns: none;
+    justify-content: flex-start;
+    padding-left: 2px;
+    padding-bottom: 5px;
+    /* Limit max width: char-row-length * 180px (chest width) */
+    max-width: calc(var(--char-row-length, 8) * 180px);
+}
+
+.summarized-item {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    overflow: visible !important;
+}
+
+/* Ensure SpriteCard doesn't overflow */
+.summarized-item > :global(.sprite-card) {
+    position: relative;
+    z-index: 1;
+}
+
+.summarized-item .item-count {
+    position: absolute;
+    bottom: -1px;
+    left: 2px;
+    color: white;
+    font: bold 14px Arial, sans-serif;
+    text-shadow: -1px -1px 2px black, 1px -1px 2px black, -1px 1px 2px black, 1px 1px 2px black;
+    min-width: auto;
+    padding: 0 2px;
+    background-color: transparent;
+    border-radius: 0;
+    text-align: left;
+    line-height: 1;
+    z-index: 100;
+    pointer-events: none;
+    display: block !important;
+}

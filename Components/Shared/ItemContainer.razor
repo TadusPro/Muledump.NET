@@ -1,18 +1,40 @@
 @using MDTadusMod.Data
 
-@if (PaddedItems?.Any() == true)
+@if (Items?.Any() == true)
 {
-    <div class="@CssClass" @attributes="FilteredAttributes">
-        @for (int i = 0; i < PaddedItems.Count; i += BatchSize)
-        {
-            <div class="item-container">
-                @foreach (var item in PaddedItems.Skip(i).Take(BatchSize))
-                {
-                    <SpriteCard Type="@item.Id" Rarity="@GetRarityFromEnchantments(item.RawEnchantData)" />
-                }
-            </div>
-        }
-    </div>
+    @if (DisplayType == ContainerDisplayType.Summarized)
+    {
+        <div class="@CssClass summarized-container" @attributes="FilteredAttributes">
+            @foreach (var itemGroup in GroupedItems)
+            {
+                <div class="summarized-item">
+                    <SpriteCard Type="@itemGroup.Key.ItemId" Rarity="@itemGroup.Key.Rarity" />
+                    <span class="item-count">@itemGroup.Value</span>
+                </div>
+            }
+            @if (EmptySlotCount > 0)
+            {
+                <div class="summarized-item empty-slot">
+                    <SpriteCard Type="-1" Rarity="0" />
+                    <span class="item-count">@EmptySlotCount</span>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="@CssClass" @attributes="FilteredAttributes">
+            @for (int i = 0; i < PaddedItems.Count; i += BatchSize)
+            {
+                <div class="item-container">
+                    @foreach (var item in PaddedItems.Skip(i).Take(BatchSize))
+                    {
+                        <SpriteCard Type="@item.Id" Rarity="@GetRarityFromEnchantments(item.RawEnchantData)" />
+                    }
+                </div>
+            }
+        </div>
+    }
 }
 
 @code {
@@ -25,10 +47,15 @@
     [Parameter]
     public bool NoPadding { get; set; } = false;
 
+    [Parameter]
+    public ContainerDisplayType DisplayType { get; set; } = ContainerDisplayType.Chest;
+
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object> AdditionalAttributes { get; set; }
 
     private List<Item> PaddedItems { get; set; } = new();
+    private Dictionary<(int ItemId, int Rarity), int> GroupedItems { get; set; } = new();
+    private int EmptySlotCount { get; set; } = 0;
     private string CssClass { get; set; }
     private IReadOnlyDictionary<string, object> FilteredAttributes { get; set; }
 
@@ -52,15 +79,30 @@
 
         if (Items != null)
         {
-            PaddedItems = new List<Item>(Items);
-            if (!NoPadding)
+            if (DisplayType == ContainerDisplayType.Summarized)
             {
-                var remainder = PaddedItems.Count % BatchSize;
-                if (remainder > 0)
+                // Count empty slots
+                EmptySlotCount = Items.Count(item => item.Id == -1);
+                
+                // Group items by ID and rarity (excluding empty slots)
+                GroupedItems = Items
+                    .Where(item => item.Id != -1)
+                    .GroupBy(item => (ItemId: item.Id, Rarity: GetRarityFromEnchantments(item.RawEnchantData)))
+                    .ToDictionary(g => g.Key, g => g.Count());
+            }
+            else
+            {
+                // Original chest display logic
+                PaddedItems = new List<Item>(Items);
+                if (!NoPadding)
                 {
-                    for (int i = 0; i < BatchSize - remainder; i++)
+                    var remainder = PaddedItems.Count % BatchSize;
+                    if (remainder > 0)
                     {
-                        PaddedItems.Add(new Item { Id = -1 });
+                        for (int i = 0; i < BatchSize - remainder; i++)
+                        {
+                            PaddedItems.Add(new Item { Id = -1 });
+                        }
                     }
                 }
             }
@@ -68,6 +110,8 @@
         else
         {
             PaddedItems.Clear();
+            GroupedItems.Clear();
+            EmptySlotCount = 0;
         }
         base.OnParametersSet();
     }

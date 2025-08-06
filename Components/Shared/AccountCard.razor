@@ -94,37 +94,58 @@
 
         @if (!ViewOptions.Shrink && ViewOptions.Vaults && AccountData?.Vault?.Items?.Any() == true)
         {
-            <ItemContainer Items="AccountData.Vault.Items" class="vaults" style="@($"--char-row-length: {_effectiveCharRowLength};")" />
+            <ItemContainer Items="AccountData.Vault.Items" 
+                          DisplayType="@GetDisplayType(nameof(ViewOptions.VaultsDisplayType))"
+                          class="vaults" 
+                          style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
 
         @if (!ViewOptions.Shrink && ViewOptions.Potions && AccountData?.Potions?.Any() == true)
         {
-            <ItemContainer Items="AccountData.Potions" class="potions" style="@($"--char-row-length: {_effectiveCharRowLength};")" />
+            <ItemContainer Items="AccountData.Potions" 
+                          DisplayType="@GetDisplayType(nameof(ViewOptions.PotionsDisplayType))"
+                          class="potions" 
+                          style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
 
         @if (!ViewOptions.Shrink && ViewOptions.Materials && AccountData?.MaterialStorage?.Items?.Any() == true)
         {
-            <ItemContainer Items="AccountData.MaterialStorage.Items" class="materials" style="@($"--char-row-length: {_effectiveCharRowLength};")" />
+            <ItemContainer Items="AccountData.MaterialStorage.Items" 
+                          DisplayType="@GetDisplayType(nameof(ViewOptions.MaterialsDisplayType))"
+                          class="materials" 
+                          style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
 
         @if (!ViewOptions.Shrink && ViewOptions.Spoils && AccountData?.TemporaryGifts?.Any() == true)
         {
-            <ItemContainer Items="AccountData.TemporaryGifts" class="spoils" style="@($"--char-row-length: {_effectiveCharRowLength};")" />
+            <ItemContainer Items="AccountData.TemporaryGifts" 
+                          DisplayType="@GetDisplayType(nameof(ViewOptions.SpoilsDisplayType))"
+                          class="spoils" 
+                          style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
 
         @if (!ViewOptions.Shrink && ViewOptions.Gifts && AccountData?.Gifts?.Any() == true)
         {
-            <ItemContainer Items="AccountData.Gifts" class="gifts" style="@($"--char-row-length: {_effectiveCharRowLength};")" />
+            <ItemContainer Items="AccountData.Gifts" 
+                          DisplayType="@GetDisplayType(nameof(ViewOptions.GiftsDisplayType))"
+                          class="gifts" 
+                          style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
 
         @if (!ViewOptions.Shrink && ViewOptions.PetInventory && AccountData?.SeasonalPetInventory?.Items?.Any() == true)
         {
-            <ItemContainer Items="AccountData.SeasonalPetInventory.Items" class="petinv" style="@($"--char-row-length: {_effectiveCharRowLength};")" />
+            <ItemContainer Items="AccountData.SeasonalPetInventory.Items" 
+                          DisplayType="@GetDisplayType(nameof(ViewOptions.PetInventoryDisplayType))"
+                          class="petinv" 
+                          style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
 
         @if (!ViewOptions.Shrink && ViewOptions.PetInventory && AccountData?.NonSeasonalPetInventory?.Items?.Any() == true)
         {
-            <ItemContainer Items="AccountData.NonSeasonalPetInventory.Items" class="petinv" style="@($"--char-row-length: {_effectiveCharRowLength};")" />
+            <ItemContainer Items="AccountData.NonSeasonalPetInventory.Items" 
+                          DisplayType="@GetDisplayType(nameof(ViewOptions.PetInventoryDisplayType))"
+                          class="petinv" 
+                          style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
     </div>
 }
@@ -177,6 +198,20 @@
         _effectiveCharRowLength = ViewOptions.CharRowLength;
         SettingsManager.OnChange += HandleSettingsChanged;
         MaxStatsPerClass = await AssetService.GetMaxStatsPerClass();
+    }
+
+    private ContainerDisplayType GetDisplayType(string containerPropertyName)
+    {
+        if (!SettingsManager.GlobalSettings.ShowExtendedItemContainerDisplay)
+            return ContainerDisplayType.Chest;
+
+        var property = typeof(AccountViewOptions).GetProperty(containerPropertyName);
+        if (property != null && property.GetValue(ViewOptions) is ContainerDisplayType displayType)
+        {
+            return displayType;
+        }
+
+        return ContainerDisplayType.Chest;
     }
 
     private string GetStarColor(int stars)
