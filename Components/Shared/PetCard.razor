@@ -1,0 +1,74 @@
+﻿@using MDTadusMod.Data
+@using MDTadusMod.Services
+@inject AssetService AssetService
+
+@if (Pet != null)
+{
+    <div class="pet">
+        <div class="pdesc">
+            <SpriteCard Type="@(Pet.Skin != 0 ? Pet.Skin : Pet.ObjectType)" BackgroundOff="true"></SpriteCard>
+            <div>
+                <div style="padding-top: 3px;">
+                    <span>@_petDisplayName #@Pet.InstanceId</span>
+                </div>
+                <div>
+                    <span>@GetRarity(Pet.Rarity)</span>
+                </div>
+            </div>
+        </div>
+        <table class="pet-abilities">
+            <tbody>
+                @foreach (var ability in Pet.Abilities)
+                {
+                    <tr>
+                        <td class="ability-name">@GetAbilityName(ability.Type)</td>
+                        <td class="ability-level">Lvl @ability.Power</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public Pet Pet { get; set; }
+
+    private string _petDisplayName = "Unknown";
+    private Dictionary<int, string> _abilityNames = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Pet != null)
+        {
+            var idToLookup = Pet.Skin != 0 ? Pet.Skin : Pet.ObjectType;
+            _petDisplayName = await AssetService.GetPetSkinDisplayNameById(idToLookup);
+
+            _abilityNames.Clear();
+            foreach (var ability in Pet.Abilities)
+            {
+                if (!_abilityNames.ContainsKey(ability.Type))
+                {
+                    _abilityNames[ability.Type] = await AssetService.GetPetAbilityNameById(ability.Type);
+                }
+            }
+        }
+    }
+
+    private string GetAbilityName(int type)
+    {
+        return _abilityNames.GetValueOrDefault(type, $"Ability {type}");
+    }
+    private string GetRarity(int rarity)
+    {
+        return rarity switch
+        {
+            0 => "Common",
+            1 => "Uncommon",
+            2 => "Rare",
+            3 => "Legendary",
+            4 => "Divine",
+            _ => $"Unknown ({rarity})"
+        };
+    }
+}

@@ -81,6 +81,17 @@
             </div>
         }
 
+        @if (!ViewOptions.Shrink && ViewOptions.PetDescription && (AccountData?.Pets?.Any() == true))
+        {
+            <div class="pets" style="--char-row-length: @_effectiveCharRowLength;">
+                @foreach (var pet in AccountData.Pets.OrderByDescending(p => p.Rarity).ThenByDescending(p => p.MaxAbilityPower))
+                {
+                    <PetCard Pet="pet" />
+                }
+            </div>
+        }
+
+
         @if (!ViewOptions.Shrink && ViewOptions.Vaults && AccountData?.Vault?.Items?.Any() == true)
         {
             <ItemContainer Items="AccountData.Vault.Items" class="vaults" style="@($"--char-row-length: {_effectiveCharRowLength};")" />
@@ -104,6 +115,16 @@
         @if (!ViewOptions.Shrink && ViewOptions.Gifts && AccountData?.Gifts?.Any() == true)
         {
             <ItemContainer Items="AccountData.Gifts" class="gifts" style="@($"--char-row-length: {_effectiveCharRowLength};")" />
+        }
+
+        @if (!ViewOptions.Shrink && ViewOptions.PetInventory && AccountData?.SeasonalPetInventory?.Items?.Any() == true)
+        {
+            <ItemContainer Items="AccountData.SeasonalPetInventory.Items" class="petinv" style="@($"--char-row-length: {_effectiveCharRowLength};")" />
+        }
+
+        @if (!ViewOptions.Shrink && ViewOptions.PetInventory && AccountData?.NonSeasonalPetInventory?.Items?.Any() == true)
+        {
+            <ItemContainer Items="AccountData.NonSeasonalPetInventory.Items" class="petinv" style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
     </div>
 }

@@ -69,7 +69,7 @@ namespace MDTadusMod.Services
             _fameBonuses = new Dictionary<int, FameBonus>();
 
             // Build Item and Player Data
-            var itemTypes = new[] { "Player", "Equipment", "Skin", "Dye", "Emote", "Entrance" };
+            var itemTypes = new[] { "Player", "Equipment", "Skin", "Dye", "Emote", "Entrance", "PetSkin", "PetAbility" };
             foreach (var itemType in itemTypes)
             {
                 if (RotMGAssetExtractor.RotMGAssetExtractor.BuildModelsByType.TryGetValue(itemType, out var itemObjects))
@@ -150,6 +150,29 @@ namespace MDTadusMod.Services
             }
 
             return Task.CompletedTask;
+        }
+
+        public static async Task<string> GetPetAbilityNameById(int id)
+        {
+            if (!await Ready()) return "Unknown";
+
+            if (_itemModelsById.TryGetValue(id, out var itemModel) && itemModel is RotMGAssetExtractor.Model.PetAbility petAbility)
+            {
+                return petAbility.id;
+            }
+            return $"Ability #{id}";
+        }
+
+        public static async Task<string> GetPetSkinDisplayNameById(int skinId)
+        {
+            if (!await Ready()) return "Unknown";
+
+            if (_itemModelsById.TryGetValue(skinId, out var itemModel) && itemModel is PetSkin petSkin)
+            {
+                return petSkin.DisplayId; // 'id' holds the display name for PetSkin models
+            }
+
+            return "Unknown";
         }
 
         public static async Task<bool> IsStatMaxed(Character character, string statName)

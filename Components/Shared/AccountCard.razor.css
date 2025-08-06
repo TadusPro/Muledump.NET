@@ -86,7 +86,7 @@ p {
     margin: 0 0 0 .25rem;
 }
 
-.chars {
+.chars, .pets {
     display: grid;
     /* 
      * Creates a grid with a specific number of columns defined by --char-row-length.

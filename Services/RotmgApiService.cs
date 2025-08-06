@@ -75,7 +75,6 @@ namespace MDTadusMod.Services
 
         private void ParseCharListXml(string xml, AccountData accountData)
         {
-            Debug.WriteLine(xml);
             var xDoc = XDocument.Parse(xml);
             var charsElement = xDoc.Root;
             var accountElement = charsElement.Element("Account");
@@ -140,7 +139,7 @@ namespace MDTadusMod.Services
                         Vitality = (int?)c.Element("HpRegen") ?? 0,
                         Wisdom = (int?)c.Element("MpRegen") ?? 0,
                         PCStats = c.Element("PCStats")?.Value,
-                        Seasonal = c.Element("Seasonal") != null,
+                        Seasonal = c.Element("Seasonal")?.Value == "True",
                         HasBackpack = c.Element("HasBackpack")?.Value == "1",
                         // Use the character-specific parser (which uses the 'type' attribute)
                         UniqueItemData = ParseCharacterEnchantmentMap(c.Element("UniqueItemInfo"))
@@ -206,22 +205,34 @@ namespace MDTadusMod.Services
                                 var invString = (string)petElement.Attribute("inv");
                                 if (!string.IsNullOrEmpty(invString))
                                 {
-                                    var itemStrings = invString.Split(';')[2].Split(',').Where(s => !string.IsNullOrWhiteSpace(s));
-                                    foreach (var itemStr in itemStrings)
+                                    // Parse the inv format: "0,8;X;item1,item2#enchantId,..."
+                                    var invParts = invString.Split(';');
+                                    if (invParts.Length >= 3)
                                     {
-                                        var parts = itemStr.Split('#');
-                                        var itemId = int.Parse(parts[0]);
-                                        string enchantData = null;
-                                        if (parts.Length > 1)
+                                        // invParts[0] = "0,8" (slot info)
+                                        // invParts[1] = "X" (delimiter)
+                                        // invParts[2] = actual items
+                                        var itemsString = invParts[2];
+                                        if (!string.IsNullOrEmpty(itemsString))
                                         {
-                                            accountData.UniquePetItemData.TryGetValue(parts[1], out enchantData);
+                                            var itemStrings = itemsString.Split(',').Where(s => !string.IsNullOrWhiteSpace(s));
+                                            foreach (var itemStr in itemStrings)
+                                            {
+                                                var parts = itemStr.Split('#');
+                                                var itemId = int.Parse(parts[0]);
+                                                string enchantData = null;
+                                                if (parts.Length > 1)
+                                                {
+                                                    accountData.UniquePetItemData.TryGetValue(parts[1], out enchantData);
+                                                }
+                                                targetInventory.Items.Add(new Item(itemId, enchantData));
+                                            }
                                         }
-                                        targetInventory.Items.Add(new Item(itemId, enchantData));
+
+                                        if (character.Seasonal) seasonalPetInvParsed = true;
+                                        else nonSeasonalPetInvParsed = true;
                                     }
                                 }
-
-                                if (character.Seasonal) seasonalPetInvParsed = true;
-                                else nonSeasonalPetInvParsed = true;
                             }
                         }
                     }

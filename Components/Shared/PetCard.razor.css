@@ -1,0 +1,29 @@
+﻿.pet {
+    vertical-align: top;
+    text-align: center;
+    padding: 0;
+    background-color: #333;
+    margin-bottom: 5px;
+}
+
+.pdesc {
+    grid-area: desc;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    width: 180px;
+}
+
+    .pdesc div {
+        text-align: left;
+    }
+
+.pet-abilities {
+    margin-left:10px;
+    width: 160px;
+    white-space: nowrap;
+    align-content:center;
+}
+.ability-name {
+    text-align: left;
+}
