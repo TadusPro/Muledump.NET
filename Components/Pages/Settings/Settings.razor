@@ -18,6 +18,14 @@
                    checked="@SettingsManager.GlobalSettings.ShowExtendedItemContainerDisplay"
                    @onchange="(e) => UpdateGlobalSetting(nameof(SettingsManager.GlobalSettings.ShowExtendedItemContainerDisplay), e.Value)" />
         </div>
+        
+        <div class="setting-item">
+            <label for="groupRarities">Account for rarity when summarizing items</label>
+            <input type="checkbox" 
+                   id="groupRarities"
+                   checked="@SettingsManager.GlobalSettings.GroupRarities"
+                   @onchange="(e) => UpdateGlobalSetting(nameof(SettingsManager.GlobalSettings.GroupRarities), e.Value)" />
+        </div>
     </div>
 </div>
 

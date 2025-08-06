@@ -1,4 +1,6 @@
 @using MDTadusMod.Data
+@using MDTadusMod.Services
+@inject SettingsService SettingsManager
 
 @if (Items?.Any() == true)
 {
@@ -59,6 +61,11 @@
     private string CssClass { get; set; }
     private IReadOnlyDictionary<string, object> FilteredAttributes { get; set; }
 
+    protected override void OnInitialized()
+    {
+        SettingsManager.OnChange += StateHasChanged;
+    }
+
     protected override void OnParametersSet()
     {
         // Combine the base class with any user-provided class.
@@ -84,11 +91,26 @@
                 // Count empty slots
                 EmptySlotCount = Items.Count(item => item.Id == -1);
                 
-                // Group items by ID and rarity (excluding empty slots)
-                GroupedItems = Items
-                    .Where(item => item.Id != -1)
-                    .GroupBy(item => (ItemId: item.Id, Rarity: GetRarityFromEnchantments(item.RawEnchantData)))
-                    .ToDictionary(g => g.Key, g => g.Count());
+                // Group items based on the GroupRarities setting
+                if (SettingsManager.GlobalSettings.GroupRarities)
+                {
+                    // Group by ID and rarity (keep rarities separate)
+                    GroupedItems = Items
+                        .Where(item => item.Id != -1)
+                        .GroupBy(item => (ItemId: item.Id, Rarity: GetRarityFromEnchantments(item.RawEnchantData)))
+                        .ToDictionary(g => g.Key, g => g.Count());
+                }
+                else
+                {
+                    // Group by ID only, ignoring rarity
+                    GroupedItems = Items
+                        .Where(item => item.Id != -1)
+                        .GroupBy(item => item.Id)
+                        .ToDictionary(
+                            g => (ItemId: g.Key, Rarity: 0), // Use 0 as a placeholder rarity
+                            g => g.Count()
+                        );
+                }
             }
             else
             {
@@ -152,5 +174,10 @@
         {
             return 0;
         }
+    }
+
+    public void Dispose()
+    {
+        SettingsManager.OnChange -= StateHasChanged;
     }
 }

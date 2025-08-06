@@ -4,6 +4,7 @@ namespace MDTadusMod.Data
     {
         // Display Settings
         public bool ShowExtendedItemContainerDisplay { get; set; } = true;
+        public bool GroupRarities { get; set; } = false;
         
         // Add more global settings here as needed
         // public bool DarkMode { get; set; } = false;
