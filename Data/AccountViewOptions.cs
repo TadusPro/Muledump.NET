@@ -38,6 +38,17 @@
         public bool PetInventory { get; set; } // sub option of Pet
 
         public bool Shrink { get; set; } // global
+
+        // Container Display Options
+        public ContainerDisplayType InventoryDisplayType { get; set; } = ContainerDisplayType.Chest;
+        public ContainerDisplayType EquipmentDisplayType { get; set; } = ContainerDisplayType.Chest;
+        public ContainerDisplayType QuickslotsDisplayType { get; set; } = ContainerDisplayType.Chest;
+        public ContainerDisplayType VaultsDisplayType { get; set; } = ContainerDisplayType.Chest;
+        public ContainerDisplayType PotionsDisplayType { get; set; } = ContainerDisplayType.Chest;
+        public ContainerDisplayType MaterialsDisplayType { get; set; } = ContainerDisplayType.Chest;
+        public ContainerDisplayType SpoilsDisplayType { get; set; } = ContainerDisplayType.Chest;
+        public ContainerDisplayType GiftsDisplayType { get; set; } = ContainerDisplayType.Chest;
+        public ContainerDisplayType PetInventoryDisplayType { get; set; } = ContainerDisplayType.Chest;
     }
     public enum CharOrder
     {
@@ -52,5 +63,11 @@
     {
         Base = 0,
         LeftToMax = 1,
+    }
+
+    public enum ContainerDisplayType
+    {
+        Chest = 0,
+        Summarized = 1,
     }
 }

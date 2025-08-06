@@ -124,3 +124,8 @@ span {
 .depth-4 .group-label {
     color: #8c8;
 }
+
+.option-item.sub-option {
+    margin-left: 20px;
+    font-size: 0.9em;
+}

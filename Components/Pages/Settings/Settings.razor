@@ -1,11 +1,42 @@
 ﻿@page "/settings"
+@using MDTadusMod.Services
+@using MDTadusMod.Data
+@inject SettingsService SettingsManager
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <div class="table-container">
 	<h1>Settings</h1>
 
-
+    <div class="settings-section">
+        <h2>Display Settings</h2>
+        
+        <div class="setting-item">
+            <label for="extendedItemContainer">Show Extended Item Container Display Options</label>
+            <input type="checkbox" 
+                   id="extendedItemContainer"
+                   checked="@SettingsManager.GlobalSettings.ShowExtendedItemContainerDisplay"
+                   @onchange="(e) => UpdateGlobalSetting(nameof(SettingsManager.GlobalSettings.ShowExtendedItemContainerDisplay), e.Value)" />
+        </div>
+    </div>
 </div>
 
 @code {
+    protected override void OnInitialized()
+    {
+        SettingsManager.OnChange += StateHasChanged;
+    }
 
+    private void UpdateGlobalSetting(string propertyName, object value)
+    {
+        if (value is bool boolValue)
+        {
+            SettingsManager.UpdateGlobalSetting(propertyName, boolValue);
+        }
+    }
+
+    public void Dispose()
+    {
+        SettingsManager.OnChange -= StateHasChanged;
+    }
 }

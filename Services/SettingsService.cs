@@ -8,9 +8,12 @@ namespace MDTadusMod.Services
     public class SettingsService
     {
         private const string SettingsFileName = "AccountView_settings.xml";
+        private const string GlobalSettingsFileName = "Global_settings.xml";
         private static string SettingsFilePath => Path.Combine(FileSystem.AppDataDirectory, SettingsFileName);
+        private static string GlobalSettingsFilePath => Path.Combine(FileSystem.AppDataDirectory, GlobalSettingsFileName);
 
         public AccountViewOptions GlobalOptions { get; private set; } = new();
+        public GlobalSettings GlobalSettings { get; private set; } = new();
 
         // This would be populated with your actual account data
         private List<AccountViewOptions> _allAccountOptions = new();
@@ -20,6 +23,7 @@ namespace MDTadusMod.Services
         public SettingsService()
         {
             LoadSettings();
+            LoadGlobalSettings();
         }
 
         public void UpdateGlobalOption(string propertyName, object value)
@@ -39,6 +43,17 @@ namespace MDTadusMod.Services
 
                 // 3. Save changes and notify the UI
                 SaveSettings();
+                NotifyStateChanged();
+            }
+        }
+
+        public void UpdateGlobalSetting(string propertyName, object value)
+        {
+            var property = typeof(GlobalSettings).GetProperty(propertyName);
+            if (property != null)
+            {
+                property.SetValue(GlobalSettings, value);
+                SaveGlobalSettings();
                 NotifyStateChanged();
             }
         }
@@ -93,6 +108,46 @@ namespace MDTadusMod.Services
                 // You might want to decide how to sync global and specific settings here
             }
             NotifyStateChanged();
+        }
+
+        private void SaveGlobalSettings()
+        {
+            try
+            {
+                var serializer = new XmlSerializer(typeof(GlobalSettings));
+                using (var writer = new StreamWriter(GlobalSettingsFilePath))
+                {
+                    serializer.Serialize(writer, GlobalSettings);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error saving global settings: {ex.Message}");
+            }
+        }
+
+        private void LoadGlobalSettings()
+        {
+            if (!File.Exists(GlobalSettingsFilePath))
+            {
+                GlobalSettings = new GlobalSettings();
+                return;
+            }
+
+            try
+            {
+                using var fs = File.OpenRead(GlobalSettingsFilePath);
+                GlobalSettings = (GlobalSettings?)new XmlSerializer(
+                                    typeof(GlobalSettings))
+                                    .Deserialize(fs)
+                                ?? new GlobalSettings();
+            }
+            catch (InvalidOperationException ex)
+            {
+                Debug.WriteLine(ex);
+                File.Move(GlobalSettingsFilePath, GlobalSettingsFilePath + ".bak");
+                GlobalSettings = new GlobalSettings();
+            }
         }
 
         private void NotifyStateChanged() => OnChange?.Invoke();
