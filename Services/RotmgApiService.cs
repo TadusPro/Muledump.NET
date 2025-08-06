@@ -75,6 +75,7 @@ namespace MDTadusMod.Services
 
         private void ParseCharListXml(string xml, AccountData accountData)
         {
+            Debug.WriteLine(xml);
             var xDoc = XDocument.Parse(xml);
             var charsElement = xDoc.Root;
             var accountElement = charsElement.Element("Account");
@@ -112,6 +113,10 @@ namespace MDTadusMod.Services
                 accountData.UniqueTemporaryGiftItemData = ParseAccountEnchantmentMap(accountElement.Element("UniqueTemporaryGiftItemInfo"));
                 accountData.MaterialStorageItemData = ParseAccountEnchantmentMap(accountElement.Element("MaterialStorageData"));
             }
+
+            var existingPetInstanceIds = new HashSet<int>();
+            bool seasonalPetInvParsed = false;
+            bool nonSeasonalPetInvParsed = false;
 
             // --- Characters ---
             accountData.Characters = charsElement.Elements("Char")
@@ -154,6 +159,73 @@ namespace MDTadusMod.Services
                     }
 
                     character.ParsePCStats();
+
+                    // --- Pet Data ---
+                    var petElement = c.Element("Pet");
+                    if (petElement != null)
+                    {
+                        var instanceId = (int)petElement.Attribute("instanceId");
+                        if (existingPetInstanceIds.Add(instanceId)) // True if the pet is new
+                        {
+                            var pet = new Pet
+                            {
+                                InstanceId = instanceId,
+                                Name = (string)petElement.Attribute("name"),
+                                ObjectType = (int)petElement.Attribute("type"),
+                                Rarity = (int)petElement.Attribute("rarity"),
+                                MaxAbilityPower = (int)petElement.Attribute("maxAbilityPower"),
+                                Skin = (int)petElement.Attribute("skin"),
+                                Shader = (int)petElement.Attribute("shader"),
+                                CreatedOn = (string)petElement.Attribute("createdOn"),
+                                Abilities = petElement.Element("Abilities")?.Elements("Ability")
+                                    .Select(ab => new PetAbility
+                                    {
+                                        Type = (int)ab.Attribute("type"),
+                                        Power = (int)ab.Attribute("power"),
+                                        Points = (int)ab.Attribute("points")
+                                    }).ToList() ?? new List<PetAbility>()
+                            };
+                            accountData.Pets.Add(pet);
+                        }
+
+                        // Merge pet unique item data into the account-level dictionary
+                        var petUniqueItemInfo = ParseAccountEnchantmentMap(petElement.Element("UniqueItemInfo"));
+                        foreach (var entry in petUniqueItemInfo)
+                        {
+                            accountData.UniquePetItemData[entry.Key] = entry.Value;
+                        }
+
+                        // Parse shared pet inventory
+                        if ((string)petElement.Attribute("incInv") == "1")
+                        {
+                            var targetInventory = character.Seasonal ? accountData.SeasonalPetInventory : accountData.NonSeasonalPetInventory;
+                            var wasParsed = character.Seasonal ? seasonalPetInvParsed : nonSeasonalPetInvParsed;
+
+                            if (!wasParsed)
+                            {
+                                var invString = (string)petElement.Attribute("inv");
+                                if (!string.IsNullOrEmpty(invString))
+                                {
+                                    var itemStrings = invString.Split(';')[2].Split(',').Where(s => !string.IsNullOrWhiteSpace(s));
+                                    foreach (var itemStr in itemStrings)
+                                    {
+                                        var parts = itemStr.Split('#');
+                                        var itemId = int.Parse(parts[0]);
+                                        string enchantData = null;
+                                        if (parts.Length > 1)
+                                        {
+                                            accountData.UniquePetItemData.TryGetValue(parts[1], out enchantData);
+                                        }
+                                        targetInventory.Items.Add(new Item(itemId, enchantData));
+                                    }
+                                }
+
+                                if (character.Seasonal) seasonalPetInvParsed = true;
+                                else nonSeasonalPetInvParsed = true;
+                            }
+                        }
+                    }
+
                     return character;
                 }).ToList();
 
@@ -254,8 +326,8 @@ namespace MDTadusMod.Services
         {
             if (fame >= 15000) return 5;
             if (fame >= 5000) return 4;
-            if (fame >= 800) return 3;
-            if (fame >= 400) return 2;
+            if (fame >= 1500) return 3;
+            if (fame >= 500) return 2;
             if (fame >= 20) return 1;
             return 0;
         }

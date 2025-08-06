@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
 using System.Xml.Serialization;
 
 namespace MDTadusMod.Data
@@ -34,15 +37,26 @@ namespace MDTadusMod.Data
         [XmlArrayItem("Item")]
         public List<Item> TemporaryGifts { get; set; } = new();
 
+        // Pet-related data
+        [XmlArray("Pets")]
+        [XmlArrayItem("Pet")]
+        public List<Pet> Pets { get; set; } = new List<Pet>();
+        public PetInventoryData SeasonalPetInventory { get; set; } = new PetInventoryData();
+        public PetInventoryData NonSeasonalPetInventory { get; set; } = new PetInventoryData();
+
+
         // These dictionaries are now only used during live API parsing and will NOT be serialized.
         [XmlIgnore]
-        public Dictionary<string, string> UniqueItemData { get; set; } = new();
+        public Dictionary<string, string> UniqueItemData { get; set; } = new Dictionary<string, string>();
         [XmlIgnore]
-        public Dictionary<string, string> UniqueGiftItemData { get; set; } = new();
+        public Dictionary<string, string> UniqueGiftItemData { get; set; } = new Dictionary<string, string>();
         [XmlIgnore]
-        public Dictionary<string, string> UniqueTemporaryGiftItemData { get; set; } = new();
+        public Dictionary<string, string> UniqueTemporaryGiftItemData { get; set; } = new Dictionary<string, string>();
         [XmlIgnore]
-        public Dictionary<string, string> MaterialStorageItemData { get; set; } = new();
+        public Dictionary<string, string> MaterialStorageItemData { get; set; } = new Dictionary<string, string>();
+        [XmlIgnore]
+        public Dictionary<string, string> UniquePetItemData { get; set; } = new Dictionary<string, string>();
+
 
         public void RehydrateAllItems()
         {
