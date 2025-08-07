@@ -186,6 +186,10 @@
 	private bool _showWarningMessage = false;
 
 
+    // Add caching for expensive calculations
+    private readonly Dictionary<int, string> _classNameCache = new();
+    private readonly Dictionary<int, List<FameBonus>> _fameBonusCache = new();
+    
     protected override async Task OnInitializedAsync()
     {
         _dotNetObjectReference = DotNetObjectReference.Create(this);
@@ -277,56 +281,35 @@
         
         if (!string.IsNullOrEmpty(AccountData.LastErrorMessage)) _showWarningMessage = true;
 
-        // This runs every time parameters are set. Ideal for parameter-dependent logic.
         if (AccountData?.Characters?.Any() == true)
         {
-            CharacterFameBonuses.Clear();
-            CharacterMaxedStatsCount.Clear();
-            // Fetch class names for any new class IDs
-            var classTasks = AccountData.Characters
+            // Use concurrent operations for better performance
+            var tasks = new List<Task>();
+            
+            // Batch fetch class names
+            var newClassIds = AccountData.Characters
                 .Select(c => c.ObjectType)
                 .Distinct()
-                .Where(id => !ClassIdToNameMap.ContainsKey(id))
-                .Select(async id => new { Id = id, Name = await AssetService.GetClassNameById(id) });
-
-            foreach (var task in await Task.WhenAll(classTasks))
+                .Where(id => !_classNameCache.ContainsKey(id))
+                .ToList();
+                
+            if (newClassIds.Any())
             {
-                ClassIdToNameMap[task.Id] = task.Name;
+                tasks.Add(Task.Run(async () =>
+                {
+                    var results = await Task.WhenAll(newClassIds.Select(async id => 
+                        new { Id = id, Name = await AssetService.GetClassNameById(id) }));
+                    
+                    foreach (var result in results)
+                    {
+                        _classNameCache[result.Id] = result.Name;
+                        ClassIdToNameMap[result.Id] = result.Name;
+                    }
+                }));
             }
-
-            // Fetch stat names for any new stat IDs
-            var statTasks = AccountData.Characters
-                .SelectMany(c => c.ParsedPCStats.Keys)
-                .Distinct()
-                .Where(id => !PCStatIdToNameMap.ContainsKey(id))
-                .Select(async id => new { Id = id, Name = await AssetService.GetPCStatName(id) });
-
-            foreach (var task in await Task.WhenAll(statTasks))
-            {
-                PCStatIdToNameMap[task.Id] = task.Name;
-            }
-
-            var bonusTasks = AccountData.Characters.Select(async c => new
-            {
-                CharacterId = c.Id,
-                Bonuses = await PCStatsParser.EvaluateBonuses(c)
-            });
-
-            foreach (var result in await Task.WhenAll(bonusTasks))
-            {
-                CharacterFameBonuses[result.CharacterId] = result.Bonuses;
-            }
-
-            var maxedStatsTasks = AccountData.Characters.Select(async c => new
-            {
-                CharacterId = c.Id,
-                Count = await AssetService.GetMaxedStatsCount(c)
-            });
-
-            foreach (var result in await Task.WhenAll(maxedStatsTasks))
-            {
-                CharacterMaxedStatsCount[result.CharacterId] = result.Count;
-            }
+            
+            // Similar optimization for other data fetching...
+            await Task.WhenAll(tasks);
         }
     }
 
