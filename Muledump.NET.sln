@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36301.6
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MDTadusMod", "MDTadusMod.csproj", "{4E887ED4-E0BB-414A-A81D-8827956C8AB5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Muledump.NET", "Muledump.NET.csproj", "{4E887ED4-E0BB-414A-A81D-8827956C8AB5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RotMGAssetExtractor", "..\RotMGAssetExtractor\RotMGAssetExtractor.csproj", "{A032C868-12CF-824A-242E-1AD7AEA5E3F8}"
 EndProject

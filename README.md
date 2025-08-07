@@ -1,4 +1,4 @@
-﻿# MDTadusMod
+﻿# Muledump.NET
 
 This tool is an account manager focused on item management. It is built using .NET MAUI and Blazor Hybrid, allowing it to run on Windows, macOS, Android, and iOS from a single codebase.
 
