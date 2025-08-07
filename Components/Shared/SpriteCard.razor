@@ -28,6 +28,10 @@
     {
         <span></span>
     }
+    @if (Count > 0)
+    {
+        <span class="item-count">@Count</span>
+    }
 </div>
 
 @code {
@@ -39,6 +43,9 @@
 
     [Parameter]
     public bool BackgroundOff { get; set; }
+
+    [Parameter]
+    public int Count { get; set; } = 0;
 
     private int Id = -1;
     private string RarityOverlayImage;

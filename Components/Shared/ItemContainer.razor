@@ -11,15 +11,13 @@
             @foreach (var itemGroup in GroupedItems)
             {
                 <div class="summarized-item">
-                    <SpriteCard Type="@itemGroup.Key.ItemId" Rarity="@itemGroup.Key.Rarity" />
-                    <span class="item-count">@itemGroup.Value</span>
+                    <SpriteCard Type="@itemGroup.Key.ItemId" Rarity="@itemGroup.Key.Rarity" Count="@itemGroup.Value" />
                 </div>
             }
             @if (EmptySlotCount > 0)
             {
                 <div class="summarized-item empty-slot">
-                    <SpriteCard Type="-1" Rarity="0" />
-                    <span class="item-count">@EmptySlotCount</span>
+                    <SpriteCard Type="-1" Rarity="0" Count="@EmptySlotCount" />
                 </div>
             }
         </div>
