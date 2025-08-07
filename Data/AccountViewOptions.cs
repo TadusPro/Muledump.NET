@@ -40,34 +40,34 @@
         public bool Shrink { get; set; } // global
 
         // Container Display Options
-        public ContainerDisplayType InventoryDisplayType { get; set; } = ContainerDisplayType.Chest;
-        public ContainerDisplayType EquipmentDisplayType { get; set; } = ContainerDisplayType.Chest;
-        public ContainerDisplayType QuickslotsDisplayType { get; set; } = ContainerDisplayType.Chest;
-        public ContainerDisplayType VaultsDisplayType { get; set; } = ContainerDisplayType.Chest;
-        public ContainerDisplayType PotionsDisplayType { get; set; } = ContainerDisplayType.Summarized;
-        public ContainerDisplayType MaterialsDisplayType { get; set; } = ContainerDisplayType.Chest;
-        public ContainerDisplayType SpoilsDisplayType { get; set; } = ContainerDisplayType.Chest;
-        public ContainerDisplayType GiftsDisplayType { get; set; } = ContainerDisplayType.Chest;
-        public ContainerDisplayType PetInventoryDisplayType { get; set; } = ContainerDisplayType.Chest;
+        public ContainerDisplayType InventoryDisplayType { get; set; } = ContainerDisplayType.chest;
+        public ContainerDisplayType EquipmentDisplayType { get; set; } = ContainerDisplayType.chest;
+        public ContainerDisplayType QuickslotsDisplayType { get; set; } = ContainerDisplayType.chest;
+        public ContainerDisplayType VaultsDisplayType { get; set; } = ContainerDisplayType.chest;
+        public ContainerDisplayType PotionsDisplayType { get; set; } = ContainerDisplayType.total;
+        public ContainerDisplayType MaterialsDisplayType { get; set; } = ContainerDisplayType.chest;
+        public ContainerDisplayType SpoilsDisplayType { get; set; } = ContainerDisplayType.chest;
+        public ContainerDisplayType GiftsDisplayType { get; set; } = ContainerDisplayType.chest;
+        public ContainerDisplayType PetInventoryDisplayType { get; set; } = ContainerDisplayType.chest;
     }
     public enum CharOrder
     {
         Id = 0,
-        Class = 3,
-        PlayTime = 4,
-        BaseFame = 1,
-        TotalFame = 2,
-        MaxedStats = 5,
+        @class = 3,
+        time = 4,
+        aliveFame = 1,
+        deadFame = 2,
+        maxed = 5,
     }
     public enum StatsOrder 
     {
-        Base = 0,
-        LeftToMax = 1,
+        @base = 0,
+        togo = 1,
     }
 
     public enum ContainerDisplayType
     {
-        Chest = 0,
-        Summarized = 1,
+        chest = 0,
+        total = 1,
     }
 }

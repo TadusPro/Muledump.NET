@@ -13,38 +13,37 @@
             var showExtendedDisplay = SettingsManager.GlobalSettings.ShowExtendedItemContainerDisplay;
 
             <div class="option-item">
-                <label for="email">Email</label>
                 <input type="checkbox" id="email"
                        checked="@viewOptions.Email"
                        @onchange="(e) => UpdateOption(nameof(viewOptions.Email), e.Value)" />
+                <label for="email">Email</label>
             </div>
             <div class="option-item">
-                <label for="ign">IGN</label>
                 <input type="checkbox" id="ign"
                        checked="@viewOptions.IGN"
                        @onchange="(e) => UpdateOption(nameof(viewOptions.IGN), e.Value)" />
+                <label for="ign">IGN</label>
             </div>
             <div class="option-item">
-                <label for="info">Info</label>
                 <input type="checkbox" id="info"
                        checked="@viewOptions.Info"
                        @onchange="(e) => UpdateOption(nameof(viewOptions.Info), e.Value)" />
+                <label for="info">Info</label>
             </div>
 
             <!-- Characters Section -->
             <div class="option-item">
-                <label for="characters">Show Characters</label>
                 <input type="checkbox" id="characters"
                        checked="@viewOptions.Characters"
                        @onchange="(e) => UpdateOption(nameof(viewOptions.Characters), e.Value)" />
+                <label for="characters">Characters</label>
             </div>
-
             @if (viewOptions.Characters)
             {
                 <div class="radio-group">
                     <!-- CharOrder Dropdown -->
                     <div class="option-item">
-                        <label for="charOrder">Char Order</label>
+                        <label for="charOrder">Order by</label>
                         <select id="charOrder"
                                 @onchange="(e) => UpdateOption(nameof(viewOptions.CharOrder), Enum.Parse(typeof(CharOrder), e.Value.ToString()))">
                             @foreach (CharOrder order in Enum.GetValues(typeof(CharOrder)))
@@ -56,7 +55,7 @@
 
                     <!-- CharRowLength Number Input -->
                     <div class="option-item">
-                        <label for="charRowLength">Chars per row</label>
+                        <label for="charRowLength">Rowlength</label>
                         <input type="number" id="charRowLength"
                                min="1" max="40"
                                value="@viewOptions.CharRowLength"
@@ -66,21 +65,18 @@
 
                     <!-- Other Checkboxes -->
                     <div class="option-item">
-                        <label for="charDescription">Char Description</label>
                         <input type="checkbox" id="charDescription"
                                checked="@viewOptions.CharDescription"
                                @onchange="(e) => UpdateOption(nameof(viewOptions.CharDescription), e.Value)" />
+                        <label for="charDescription">Desc</label>
                     </div>
                     <div class="option-item">
-                        <label for="equipment">Equipment</label>
                         <input type="checkbox" id="equipment"
                                checked="@viewOptions.Equipment"
                                @onchange="(e) => UpdateOption(nameof(viewOptions.Equipment), e.Value)" />
-                    </div>
-                    @if (viewOptions.Equipment && showExtendedDisplay)
-                    {
-                        <div class="option-item sub-option">
-                            <label for="equipmentDisplay">Display Type</label>
+                        <label for="equipment">Equipment</label>
+                        @if (viewOptions.Equipment && showExtendedDisplay)
+                        {
                             <select id="equipmentDisplay"
                                     @onchange="(e) => UpdateOption(nameof(viewOptions.EquipmentDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
                                 @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
@@ -88,18 +84,15 @@
                                     <option value="@type" selected="@(viewOptions.EquipmentDisplayType == type)">@type</option>
                                 }
                             </select>
-                        </div>
-                    }
+                        }
+                    </div>
                     <div class="option-item">
-                        <label for="inventory">Inventory</label>
                         <input type="checkbox" id="inventory"
                                checked="@viewOptions.Inventory"
                                @onchange="(e) => UpdateOption(nameof(viewOptions.Inventory), e.Value)" />
-                    </div>
-                    @if (viewOptions.Inventory && showExtendedDisplay)
-                    {
-                        <div class="option-item sub-option">
-                            <label for="inventoryDisplay">Display Type</label>
+                        <label for="inventory">Inventory</label>
+                        @if (viewOptions.Inventory && showExtendedDisplay)
+                        {
                             <select id="inventoryDisplay"
                                     @onchange="(e) => UpdateOption(nameof(viewOptions.InventoryDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
                                 @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
@@ -107,18 +100,15 @@
                                     <option value="@type" selected="@(viewOptions.InventoryDisplayType == type)">@type</option>
                                 }
                             </select>
-                        </div>
-                    }
+                        }
+                    </div>
                     <div class="option-item">
-                        <label for="quickslots">Quickslots</label>
                         <input type="checkbox" id="quickslots"
                                checked="@viewOptions.Quickslots"
                                @onchange="(e) => UpdateOption(nameof(viewOptions.Quickslots), e.Value)" />
-                    </div>
-                    @if (viewOptions.Quickslots && showExtendedDisplay)
-                    {
-                        <div class="option-item sub-option">
-                            <label for="quickslotsDisplay">Display Type</label>
+                        <label for="quickslots">Quickslots</label>
+                        @if (viewOptions.Quickslots && showExtendedDisplay)
+                        {
                             <select id="quickslotsDisplay"
                                     @onchange="(e) => UpdateOption(nameof(viewOptions.QuickslotsDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
                                 @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
@@ -126,24 +116,24 @@
                                     <option value="@type" selected="@(viewOptions.QuickslotsDisplayType == type)">@type</option>
                                 }
                             </select>
-                        </div>
-                    }
+                        }
+                    </div>
 
                     <!-- Stats Section -->
                     <div class="option-item">
-                        <label for="stats">Show Stats</label>
                         <input type="checkbox" id="stats"
                                checked="@viewOptions.Stats"
                                @onchange="(e) => UpdateOption(nameof(viewOptions.Stats), e.Value)" />
+                        <label for="stats">Show Stats</label>
                     </div>
                     @if (viewOptions.Stats)
                     {
                         <div class="radio-group">
                             <div class="option-item">
-                                <label for="exalts">Exalts</label>
                                 <input type="checkbox" id="exalts"
                                        checked="@viewOptions.Exalts"
                                        @onchange="(e) => UpdateOption(nameof(viewOptions.Exalts), e.Value)" />
+                                <label for="exalts">Exalts</label>
                             </div>
                             <!-- StatsOrder Dropdown -->
                             <div class="option-item">
@@ -160,149 +150,49 @@
                     }
 
                     <div class="option-item">
-                        <label for="additionalStats">Additional Stats</label>
                         <input type="checkbox" id="additionalStats"
                                checked="@viewOptions.AdditionalStats"
                                @onchange="(e) => UpdateOption(nameof(viewOptions.AdditionalStats), e.Value)" />
+                        <label for="additionalStats">Additional Stats</label>
                     </div>
                     <div class="option-item">
-                        <label for="additionalGoals">Goals</label>
                         <input type="checkbox" id="additionalGoals"
                                checked="@viewOptions.AdditionalGoals"
                                @onchange="(e) => UpdateOption(nameof(viewOptions.AdditionalGoals), e.Value)" />
+                        <label for="additionalGoals">Goals</label>
                     </div>
                     <div class="option-item">
-                        <label for="additionalBonuses">Bonuses</label>
                         <input type="checkbox" id="additionalBonuses"
                                checked="@viewOptions.AdditionalBonuses"
                                @onchange="(e) => UpdateOption(nameof(viewOptions.AdditionalBonuses), e.Value)" />
+                        <label for="additionalBonuses">Bonuses</label>
                     </div>
-                </div>
-            }
-
-            <!-- Other Global Options -->
-            <div class="option-item">
-                <label for="vaults">Vaults</label>
-                <input type="checkbox" id="vaults"
-                       checked="@viewOptions.Vaults"
-                       @onchange="(e) => UpdateOption(nameof(viewOptions.Vaults), e.Value)" />
-            </div>
-            @if (viewOptions.Vaults && showExtendedDisplay)
-            {
-                <div class="option-item sub-option">
-                    <label for="vaultsDisplay">Display Type</label>
-                    <select id="vaultsDisplay"
-                            @onchange="(e) => UpdateOption(nameof(viewOptions.VaultsDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
-                        @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
-                        {
-                            <option value="@type" selected="@(viewOptions.VaultsDisplayType == type)">@type</option>
-                        }
-                    </select>
-                </div>
-            }
-            <div class="option-item">
-                <label for="potions">Potions</label>
-                <input type="checkbox" id="potions"
-                       checked="@viewOptions.Potions"
-                       @onchange="(e) => UpdateOption(nameof(viewOptions.Potions), e.Value)" />
-            </div>
-            @if (viewOptions.Potions && showExtendedDisplay)
-            {
-                <div class="option-item sub-option">
-                    <label for="potionsDisplay">Display Type</label>
-                    <select id="potionsDisplay"
-                            @onchange="(e) => UpdateOption(nameof(viewOptions.PotionsDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
-                        @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
-                        {
-                            <option value="@type" selected="@(viewOptions.PotionsDisplayType == type)">@type</option>
-                        }
-                    </select>
-                </div>
-            }
-            <div class="option-item">
-                <label for="materials">Materials</label>
-                <input type="checkbox" id="materials"
-                       checked="@viewOptions.Materials"
-                       @onchange="(e) => UpdateOption(nameof(viewOptions.Materials), e.Value)" />
-            </div>
-            @if (viewOptions.Materials && showExtendedDisplay)
-            {
-                <div class="option-item sub-option">
-                    <label for="materialsDisplay">Display Type</label>
-                    <select id="materialsDisplay"
-                            @onchange="(e) => UpdateOption(nameof(viewOptions.MaterialsDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
-                        @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
-                        {
-                            <option value="@type" selected="@(viewOptions.MaterialsDisplayType == type)">@type</option>
-                        }
-                    </select>
-                </div>
-            }
-            <div class="option-item">
-                <label for="spoils">Spoils</label>
-                <input type="checkbox" id="spoils"
-                       checked="@viewOptions.Spoils"
-                       @onchange="(e) => UpdateOption(nameof(viewOptions.Spoils), e.Value)" />
-            </div>
-            @if (viewOptions.Spoils && showExtendedDisplay)
-            {
-                <div class="option-item sub-option">
-                    <label for="spoilsDisplay">Display Type</label>
-                    <select id="spoilsDisplay"
-                            @onchange="(e) => UpdateOption(nameof(viewOptions.SpoilsDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
-                        @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
-                        {
-                            <option value="@type" selected="@(viewOptions.SpoilsDisplayType == type)">@type</option>
-                        }
-                    </select>
-                </div>
-            }
-            <div class="option-item">
-                <label for="gifts">Gifts</label>
-                <input type="checkbox" id="gifts"
-                       checked="@viewOptions.Gifts"
-                       @onchange="(e) => UpdateOption(nameof(viewOptions.Gifts), e.Value)" />
-            </div>
-            @if (viewOptions.Gifts && showExtendedDisplay)
-            {
-                <div class="option-item sub-option">
-                    <label for="giftsDisplay">Display Type</label>
-                    <select id="giftsDisplay"
-                            @onchange="(e) => UpdateOption(nameof(viewOptions.GiftsDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
-                        @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
-                        {
-                            <option value="@type" selected="@(viewOptions.GiftsDisplayType == type)">@type</option>
-                        }
-                    </select>
                 </div>
             }
 
             <!-- Pet Section -->
             <div class="option-item">
-                <label for="pet">Show Pet</label>
                 <input type="checkbox" id="pet"
                        checked="@viewOptions.Pet"
                        @onchange="(e) => UpdateOption(nameof(viewOptions.Pet), e.Value)" />
+                <label for="pet">Pets</label>
             </div>
             @if (viewOptions.Pet)
             {
                 <div class="radio-group">
                     <div class="option-item">
-                        <label for="petDescription">Pet Description</label>
                         <input type="checkbox" id="petDescription"
                                checked="@viewOptions.PetDescription"
                                @onchange="(e) => UpdateOption(nameof(viewOptions.PetDescription), e.Value)" />
+                        <label for="petDescription">Pet Description</label>
                     </div>
                     <div class="option-item">
-                        <label for="petInventory">Pet Inventory</label>
                         <input type="checkbox" id="petInventory"
                                checked="@viewOptions.PetInventory"
                                @onchange="(e) => UpdateOption(nameof(viewOptions.PetInventory), e.Value)" />
-                    </div>
-                    @if (viewOptions.PetInventory && showExtendedDisplay)
-                    {
-                        <div class="option-item sub-option">
-                            <label for="petInventoryDisplay">Display Type</label>
+                        <label for="petInventory">Pet Inventory</label>
+                        @if (viewOptions.PetInventory && showExtendedDisplay)
+                        {
                             <select id="petInventoryDisplay"
                                     @onchange="(e) => UpdateOption(nameof(viewOptions.PetInventoryDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
                                 @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
@@ -310,16 +200,98 @@
                                     <option value="@type" selected="@(viewOptions.PetInventoryDisplayType == type)">@type</option>
                                 }
                             </select>
-                        </div>
-                    }
+                        }
+                    </div>
                 </div>
             }
 
+            <!-- Other Global Options -->
             <div class="option-item">
-                <label for="shrink">Shrink</label>
+                <input type="checkbox" id="vaults"
+                       checked="@viewOptions.Vaults"
+                       @onchange="(e) => UpdateOption(nameof(viewOptions.Vaults), e.Value)" />
+                <label for="vaults">Vaults</label>
+                @if (viewOptions.Vaults && showExtendedDisplay)
+                {
+                    <select id="vaultsDisplay"
+                            @onchange="(e) => UpdateOption(nameof(viewOptions.VaultsDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
+                        @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
+                        {
+                            <option value="@type" selected="@(viewOptions.VaultsDisplayType == type)">@type</option>
+                        }
+                    </select>
+                }
+            </div>
+            <div class="option-item">
+                <input type="checkbox" id="potions"
+                       checked="@viewOptions.Potions"
+                       @onchange="(e) => UpdateOption(nameof(viewOptions.Potions), e.Value)" />
+                <label for="potions">Potions</label>
+                @if (viewOptions.Potions && showExtendedDisplay)
+                {
+                    <select id="potionsDisplay"
+                            @onchange="(e) => UpdateOption(nameof(viewOptions.PotionsDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
+                        @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
+                        {
+                            <option value="@type" selected="@(viewOptions.PotionsDisplayType == type)">@type</option>
+                        }
+                    </select>
+                }
+            </div>
+            <div class="option-item">
+                <input type="checkbox" id="materials"
+                       checked="@viewOptions.Materials"
+                       @onchange="(e) => UpdateOption(nameof(viewOptions.Materials), e.Value)" />
+                <label for="materials">Materials</label>
+                @if (viewOptions.Materials && showExtendedDisplay)
+                {
+                    <select id="materialsDisplay"
+                            @onchange="(e) => UpdateOption(nameof(viewOptions.MaterialsDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
+                        @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
+                        {
+                            <option value="@type" selected="@(viewOptions.MaterialsDisplayType == type)">@type</option>
+                        }
+                    </select>
+                }
+            </div>
+            <div class="option-item">
+                <input type="checkbox" id="spoils"
+                       checked="@viewOptions.Spoils"
+                       @onchange="(e) => UpdateOption(nameof(viewOptions.Spoils), e.Value)" />
+                <label for="spoils">Spoils</label>
+                @if (viewOptions.Spoils && showExtendedDisplay)
+                {
+                    <select id="spoilsDisplay"
+                            @onchange="(e) => UpdateOption(nameof(viewOptions.SpoilsDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
+                        @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
+                        {
+                            <option value="@type" selected="@(viewOptions.SpoilsDisplayType == type)">@type</option>
+                        }
+                    </select>
+                }
+            </div>
+            <div class="option-item">
+                <input type="checkbox" id="gifts"
+                       checked="@viewOptions.Gifts"
+                       @onchange="(e) => UpdateOption(nameof(viewOptions.Gifts), e.Value)" />
+                <label for="gifts">Gifts</label>
+                @if (viewOptions.Gifts && showExtendedDisplay)
+                {
+                    <select id="giftsDisplay"
+                            @onchange="(e) => UpdateOption(nameof(viewOptions.GiftsDisplayType), Enum.Parse(typeof(ContainerDisplayType), e.Value.ToString()))">
+                        @foreach (ContainerDisplayType type in Enum.GetValues(typeof(ContainerDisplayType)))
+                        {
+                            <option value="@type" selected="@(viewOptions.GiftsDisplayType == type)">@type</option>
+                        }
+                    </select>
+                }
+            </div>
+
+            <div class="option-item">
                 <input type="checkbox" id="shrink"
                        checked="@viewOptions.Shrink"
                        @onchange="(e) => UpdateOption(nameof(viewOptions.Shrink), e.Value)" />
+                <label for="shrink">Shrink</label>
             </div>
         }
     </div>

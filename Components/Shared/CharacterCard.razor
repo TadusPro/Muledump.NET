@@ -221,7 +221,7 @@
     private ContainerDisplayType GetDisplayType(string containerPropertyName)
     {
         if (!SettingsManager.GlobalSettings.ShowExtendedItemContainerDisplay)
-            return ContainerDisplayType.Chest;
+            return ContainerDisplayType.chest;
 
         var property = typeof(AccountViewOptions).GetProperty(containerPropertyName);
         if (property != null && property.GetValue(ViewOptions) is ContainerDisplayType displayType)
@@ -229,7 +229,7 @@
             return displayType;
         }
 
-        return ContainerDisplayType.Chest;
+        return ContainerDisplayType.chest;
     }
 
     private (int id, int rarity) GetItemDetails(int itemId)

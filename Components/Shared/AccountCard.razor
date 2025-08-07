@@ -48,19 +48,19 @@
                     IOrderedEnumerable<Character> orderedCharacters;
                     switch (ViewOptions.CharOrder)
                     {
-                        case CharOrder.PlayTime:
+                        case CharOrder.time:
                             orderedCharacters = AccountData.Characters.OrderByDescending(c => c.ParsedPCStats.GetValueOrDefault(20, 0L));
                             break;
-                        case CharOrder.Class:
+                        case CharOrder.@class:
                             orderedCharacters = AccountData.Characters.OrderBy(c => c.ObjectType);
                             break;
-                        case CharOrder.BaseFame:
+                        case CharOrder.aliveFame:
                             orderedCharacters = AccountData.Characters.OrderByDescending(c => c.CurrentFame);
                             break;
-                        case CharOrder.TotalFame:
+                        case CharOrder.deadFame:
                             orderedCharacters = AccountData.Characters.OrderByDescending(c => PCStatsParser.CalculateTotalFame(c.CurrentFame, CharacterFameBonuses.GetValueOrDefault(c.Id, new List<FameBonus>())));
                             break;
-                        case CharOrder.MaxedStats:
+                        case CharOrder.maxed:
                             orderedCharacters = AccountData.Characters.OrderByDescending(c => CharacterMaxedStatsCount.GetValueOrDefault(c.Id, 0));
                             break;
                         default:
@@ -214,7 +214,7 @@
             {
                 // Debug: Ensure we're returning Summarized when global is OFF
                 Debug.WriteLine($"[GetDisplayType] Spoils: Global setting is OFF, returning Summarized");
-                return ContainerDisplayType.Summarized;
+                return ContainerDisplayType.total;
             }
             
             // If global setting is ON, check the actual value
@@ -225,12 +225,12 @@
                 return displayType;
             }
             Debug.WriteLine($"[GetDisplayType] Spoils: Using default Summarized");
-            return ContainerDisplayType.Summarized; // Default for Spoils
+            return ContainerDisplayType.total; // Default for Spoils
         }
 
         // For all other containers, respect the global setting normally
         if (!SettingsManager.GlobalSettings.ShowExtendedItemContainerDisplay)
-            return ContainerDisplayType.Chest;
+            return ContainerDisplayType.chest;
 
         var prop = typeof(AccountViewOptions).GetProperty(containerPropertyName);
         if (prop != null && prop.GetValue(ViewOptions) is ContainerDisplayType type)
@@ -238,7 +238,7 @@
             return type;
         }
 
-        return ContainerDisplayType.Chest;
+        return ContainerDisplayType.chest;
     }
 
     private string GetStarColor(int stars)
