@@ -1,14 +1,13 @@
 ﻿# MDTadusMod
 
-MDTadusMod is a modern, cross-platform port of the popular tool Muledump for the game Realm of the Mad God. It is built using .NET MAUI and Blazor Hybrid, allowing it to run on Windows, macOS, Android, and iOS from a single codebase.
+This tool is an account manager focused on item management. It is built using .NET MAUI and Blazor Hybrid, allowing it to run on Windows, macOS, Android, and iOS from a single codebase.
 
 ## Features
 
-*   **Account Management**: Easily add and manage multiple Realm of the Mad God accounts.
-*   **Character and Inventory Viewing**: View your characters, their stats, and all the items in your inventory and vaults.
+*   **Comprehensive Account Details**: View detailed stats for your characters and pets, along with all items across inventorycontainers.
 *   **Cross-Platform**: Runs on Windows, macOS, Android, and iOS.
-*   **Modern UI**: A clean and modern user interface built with Blazor.
-*   **Asset Extraction**: Utilizes `RotMGAssetExtractor` to get the latest game assets.
+*   **Familiar UI**: A user interface designed to look and feel like the original Muledump, built with Blazor.
+*   **Asset Extraction**: Utilizes `RotMGAssetExtractor` to extract all necessary game data directly, eliminating the need for third-party tools or resources that old MD relied on.
 
 ## Tech Stack
 
@@ -55,7 +54,8 @@ Follow these instructions to get a copy of the project up and running on your lo
 This project is a port of the original Muledump and would not be possible without the work of its creators and maintainers. Special thanks to:
 
 *   **[atomizer](https://github.com/atomizer/muledump)** for the original creation of Muledump.
-*   **[jakcodex](https://github.com/jakcodex/muledump)** for their long-term support and maintenance.
+*   **[jakcodex](https://github.com/jakcodex/muledump)** for continuing development after the original creator and providing long-term maintenance.
 *   **[BR-](https://github.com/BR-/muledump)** for continuing support.
 *   **[faynt](https://github.com/faynt0/muledump-but-better)** for continuing support.
+*   **[kecleon](https://github.com/kecleon)** for continuing support.
 
