@@ -14,11 +14,17 @@ jobs:
       - name: Checkout Muledump.NET
         uses: actions/checkout@v4
 
-      - name: Checkout RotMGAssetExtractor
+      - name: Checkout RotMGAssetExtractor (temp)
         uses: actions/checkout@v4
         with:
           repository: TadusPro/RotMGAssetExtractor
-          path: RotMGAssetExtractor
+          path: RotMGAssetExtractor_temp
+
+      - name: Move RotMGAssetExtractor to expected location
+        shell: pwsh
+        run: |
+          $parent = (Get-Item $env:GITHUB_WORKSPACE).Parent.FullName
+          Move-Item -Force "RotMGAssetExtractor_temp" (Join-Path $parent "RotMGAssetExtractor")
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
