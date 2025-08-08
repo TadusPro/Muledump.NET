@@ -6,6 +6,9 @@ on:
       - 'v*.*.*'
   workflow_dispatch: {}
 
+permissions:
+  contents: write   # allow action to create/update releases
+
 jobs:
   build:
     runs-on: windows-latest
@@ -14,17 +17,11 @@ jobs:
       - name: Checkout Muledump.NET
         uses: actions/checkout@v4
 
-      - name: Checkout RotMGAssetExtractor (temp)
+      - name: Checkout RotMGAssetExtractor
         uses: actions/checkout@v4
         with:
           repository: TadusPro/RotMGAssetExtractor
-          path: RotMGAssetExtractor_temp
-
-      - name: Move RotMGAssetExtractor to expected location
-        shell: pwsh
-        run: |
-          $parent = (Get-Item $env:GITHUB_WORKSPACE).Parent.FullName
-          Move-Item -Force "RotMGAssetExtractor_temp" (Join-Path $parent "RotMGAssetExtractor")
+          path: ../RotMGAssetExtractor   # exact path solution expects
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
