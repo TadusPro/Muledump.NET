@@ -29,14 +29,12 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore solution
-        run: dotnet restore
-        working-directory: Muledump.NET
+        run: dotnet restore Muledump.NET/Muledump.NET.sln
 
       - name: Publish Muledump.NET
         run: |
-          dotnet publish -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
-            -p:WindowsPackageType=None -p:PublishReadyToRun=false -o ../publish
-        working-directory: Muledump.NET
+          dotnet publish Muledump.NET/Muledump.NET.csproj -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
+            -p:WindowsPackageType=None -p:PublishReadyToRun=false -o publish
 
       - name: Package Muledump.NET
         shell: pwsh
