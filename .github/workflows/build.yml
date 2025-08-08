@@ -7,7 +7,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write   # allow action to create/update releases
+  contents: write
 
 jobs:
   build:
@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: TadusPro/RotMGAssetExtractor
-          path: RotMGAssetExtractor   # ends up as $GITHUB_WORKSPACE/RotMGAssetExtractor
+          path: RotMGAssetExtractor
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -29,12 +29,14 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore solution
-        run: dotnet restore Muledump.NET/Muledump.NET.sln
+        run: dotnet restore
+        working-directory: Muledump.NET
 
       - name: Publish Muledump.NET
         run: |
-          dotnet publish Muledump.NET/Muledump.NET.csproj -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
-            -p:WindowsPackageType=None -p:PublishReadyToRun=false -o publish
+          dotnet publish -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
+            -p:WindowsPackageType=None -p:PublishReadyToRun=false -o ../publish
+        working-directory: Muledump.NET
 
       - name: Package Muledump.NET
         shell: pwsh
