@@ -44,10 +44,10 @@ jobs:
         run: dotnet workload install maui --ignore-failed-sources
 
       - name: Restore NuGet packages
-        run: dotnet restore ${{ env.SOLUTION_FILE }} -r ${{ env.RID }}
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
 
       - name: Build Release
-        run: dotnet build ${{ env.SOLUTION_FILE }} -c Release --no-restore -f net8.0-windows10.0.19041.0 -r ${{ env.RID }}
+        run: dotnet build ${{ env.SOLUTION_FILE }} -c Release --no-restore -f net8.0-windows10.0.19041.0
 
       - name: Publish Windows
         run: dotnet publish ${{ env.PROJECT_FILE }} -c Release -f net8.0-windows10.0.19041.0 -r ${{ env.RID }} -p:PublishSingleFile=true -p:WindowsPackageType=msix -o publish/windows
