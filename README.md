@@ -1,6 +1,6 @@
 ﻿# Muledump.NET
 
-This tool is an account manager focused on item management. It is built using .NET MAUI and Blazor Hybrid, allowing it to run on Windows, macOS, Android, and iOS from a single codebase.
+This tool is an items and stat focused account manager for the game RotMG. It is built using .NET MAUI and Blazor Hybrid, allowing it to run on Windows, macOS, Android, and iOS from a single codebase.
 
 ## Features
 
