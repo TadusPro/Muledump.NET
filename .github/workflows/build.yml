@@ -11,9 +11,14 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Muledump.NET
+        uses: actions/checkout@v4
+
+      - name: Checkout RotMGAssetExtractor
+        uses: actions/checkout@v4
         with:
-          submodules: recursive
+          repository: TadusPro/RotMGAssetExtractor
+          path: RotMGAssetExtractor
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
