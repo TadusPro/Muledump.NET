@@ -13,24 +13,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive   # pulls RotMGAssetExtractor repo too
+          submodules: recursive
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
+      - name: Restore
+        run: dotnet restore
+
       - name: Publish Muledump.NET
         run: |
-          # Adjust path below if your main .csproj lives elsewhere
-          dotnet publish Muledump.NET/Muledump.NET.csproj -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
-            -p:WindowsPackageType=None -p:PublishReadyToRun=false
+          dotnet publish -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
+            -p:WindowsPackageType=None -p:PublishReadyToRun=false -o publish
 
       - name: Package Muledump.NET
         shell: pwsh
-        run: |
-          $OutDir = "Muledump.NET/bin/Release/net8.0-windows10.0.19041.0/win-x64/publish"
-          Compress-Archive -Path "$OutDir/*" -DestinationPath "Muledump.NET-win-x64.zip"
+        run: Compress-Archive -Path "publish/*" -DestinationPath "Muledump.NET-win-x64.zip"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
