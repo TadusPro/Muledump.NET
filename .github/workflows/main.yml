@@ -1,0 +1,49 @@
+name: Build .NET MAUI Blazor Hybrid
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  SOLUTION_FILE: 'Muledump.NET.sln'
+  PROJECT_FILE: 'Muledump.NET.csproj'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-quality: 'ga'
+
+      - name: Install MAUI workloads
+        run: dotnet workload install maui --ignore-failed-sources
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Build Release
+        run: dotnet build ${{ env.SOLUTION_FILE }} -c Release --no-restore
+
+      - name: Publish Windows
+        run: dotnet publish ${{ env.PROJECT_FILE }} -c Release -f net8.0-windows10.0.19041.0 -p:PublishSingleFile=true -p:WindowsPackageType=msix -o publish/windows
+
+      - name: Publish Android
+        run: dotnet publish ${{ env.PROJECT_FILE }} -c Release -f net8.0-android -p:AndroidPackageFormat=aab -o publish/android
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Outputs
+          path: |
+            publish/windows
+            publish/android
