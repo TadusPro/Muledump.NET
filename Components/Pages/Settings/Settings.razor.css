@@ -4,10 +4,6 @@
 }
 
 .settings-section {
-    margin: 20px 0;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
 }
 
 .settings-section h2 {
@@ -20,16 +16,27 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px solid #eee;
+    margin-bottom: 5px;
 }
 
 .setting-item:last-child {
     border-bottom: none;
 }
 
-.setting-item label {
-    flex: 1;
-    margin-right: 10px;
-}
+    .setting-item label {
+        float: left;
+        clear: left;
+        height: 25px;
+        padding-top: 6px;
+        margin-right: 10px;
+        box-sizing: border-box;
+    }
+    .setting-item select {
+        font-size: 12px;
+        border: #707070 solid 2px;
+        background-color: #333;
+        padding: 3px;
+        color: #ffffff;
+        box-sizing: border-box;
+    }
 
