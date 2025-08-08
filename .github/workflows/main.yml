@@ -11,13 +11,25 @@ env:
   DOTNET_VERSION: '8.0.x'
   SOLUTION_FILE: 'Muledump.NET.sln'
   PROJECT_FILE: 'Muledump.NET.csproj'
+  ASSET_REPO: 'TadusPro/RotMGAssetExtractor' # update if owner/name differs
+  ASSET_PATH: 'RotMGAssetExtractor'           # folder where it should live
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
+      # Checkout main repo
       - uses: actions/checkout@v4
+
+      # Checkout RotMGAssetExtractor from its own repo into expected folder path
+      - name: Checkout asset extractor repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.ASSET_REPO }}
+          path: ${{ env.ASSET_PATH }}
+          # If the asset repo is private, create a PAT and add as secret GH_PAT
+          token: ${{ secrets.GH_PAT }}
 
       - name: Setup .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v4
@@ -28,7 +40,7 @@ jobs:
       - name: Install MAUI workloads
         run: dotnet workload install maui --ignore-failed-sources
 
-      - name: Restore
+      - name: Restore NuGet packages
         run: dotnet restore ${{ env.SOLUTION_FILE }}
 
       - name: Build Release
