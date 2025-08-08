@@ -1,0 +1,41 @@
+name: Muledump.NET Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish Muledump.NET
+        run: |
+          dotnet publish -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
+            -p:WindowsPackageType=None -p:PublishReadyToRun=false
+
+      - name: Package Muledump.NET
+        shell: pwsh
+        run: |
+          $OutDir = "bin/Release/net8.0-windows10.0.19041.0/win-x64/publish"
+          Compress-Archive -Path "$OutDir/*" -DestinationPath "Muledump.NET-win-x64.zip"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Muledump.NET-build
+          path: Muledump.NET-win-x64.zip
+
+      - name: Create GitHub release and upload asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Muledump.NET-win-x64.zip
