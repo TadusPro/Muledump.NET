@@ -1,0 +1,63 @@
+name: Muledump.NET Build & Release
+
+on:
+  push:
+    branches:
+      - main        # run on every commit to main
+    tags:
+      - 'v*.*.*'    # also run on version tags
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Muledump.NET repo
+        uses: actions/checkout@v4
+
+      - name: Checkout RotMGAssetExtractor (temp)
+        uses: actions/checkout@v4
+        with:
+          repository: TadusPro/RotMGAssetExtractor
+          path: RotMGAssetExtractor_temp
+
+      - name: Move extractor up one level so path matches '..\\RotMGAssetExtractor'
+        shell: pwsh
+        run: Move-Item -Force RotMGAssetExtractor_temp ..\RotMGAssetExtractor
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore deps
+        run: dotnet restore
+
+      - name: Publish Muledump.NET (same command you run locally)
+        run: |
+          dotnet publish -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
+            -p:WindowsPackageType=None -p:PublishReadyToRun=false -o publish
+
+      - name: Zip output
+        shell: pwsh
+        run: Compress-Archive -Path "publish/*" -DestinationPath "Muledump.NET-win-x64.zip"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Muledump.NET-build
+          path: Muledump.NET-win-x64.zip
+
+      - name: Upload asset to the "latest" release (always)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest                 # single rolling release
+          name: Latest
+          files: Muledump.NET-win-x64.zip
+          make_latest: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          skip_if_release_exists: false
