@@ -49,6 +49,15 @@ Follow these instructions to get a copy of the project up and running on your lo
 2.  Select the target framework/platform (e.g., Windows Machine, Android Emulator, or a physical device).
 3.  Press F5 or click the "Start" button to build and run the application.
 
+### Publishing
+
+To publish the application for Windows, run the following command:
+
+```shell
+dotnet publish -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
+  -p:WindowsPackageType=None -p:PublishReadyToRun=false
+```
+
 ## Acknowledgements
 
 This project is a port of the original Muledump and would not be possible without the work of its creators and maintainers. Special thanks to:
