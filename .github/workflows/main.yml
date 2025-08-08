@@ -44,7 +44,7 @@ jobs:
         run: dotnet workload install maui --ignore-failed-sources
 
       - name: Restore NuGet packages
-        run: dotnet restore ${{ env.SOLUTION_FILE }} -r ${{ env.RID }} -f net8.0-windows10.0.19041.0
+        run: dotnet restore ${{ env.SOLUTION_FILE }} -r ${{ env.RID }}
 
       - name: Build Release
         run: dotnet build ${{ env.SOLUTION_FILE }} -c Release --no-restore -f net8.0-windows10.0.19041.0 -r ${{ env.RID }}
