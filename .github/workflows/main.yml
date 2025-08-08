@@ -27,9 +27,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.ASSET_REPO }}
-          path: ${{ env.ASSET_PATH }}
-          # If the asset repo is private, create a PAT and add as secret GH_PAT
-          token: ${{ secrets.GH_PAT }}
+          path: ${{ env.ASSET_PATH }}  # public repo: no token needed
+          # For private repo add: token: ${{ secrets.GH_PAT }}
 
       - name: Setup .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v4
@@ -49,13 +48,8 @@ jobs:
       - name: Publish Windows
         run: dotnet publish ${{ env.PROJECT_FILE }} -c Release -f net8.0-windows10.0.19041.0 -p:PublishSingleFile=true -p:WindowsPackageType=msix -o publish/windows
 
-      - name: Publish Android
-        run: dotnet publish ${{ env.PROJECT_FILE }} -c Release -f net8.0-android -p:AndroidPackageFormat=aab -o publish/android
-
-      - name: Upload artifacts
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Outputs
-          path: |
-            publish/windows
-            publish/android
+          name: WindowsOutputs
+          path: publish/windows
