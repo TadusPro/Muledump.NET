@@ -9,26 +9,29 @@ on:
 
 env:
   DOTNET_VERSION: '8.0.x'
-  SOLUTION_FILE: 'Muledump.NET.sln'
-  PROJECT_FILE: 'Muledump.NET.csproj'
-  ASSET_REPO: 'TadusPro/RotMGAssetExtractor' # update if owner/name differs
-  ASSET_PATH: 'RotMGAssetExtractor'           # folder where it should live
+  # Main repo cloned into a subfolder so the asset repo can live alongside it
+  APP_DIR: 'MuledumpNET'
+  SOLUTION_FILE: 'MuledumpNET/Muledump.NET.sln'
+  PROJECT_FILE: 'MuledumpNET/Muledump.NET.csproj'
+  ASSET_REPO: 'TadusPro/RotMGAssetExtractor'
+  ASSET_PATH: 'RotMGAssetExtractor'
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      # Checkout main repo
+      # Checkout main repo into MuledumpNET sub‑folder
       - uses: actions/checkout@v4
+        with:
+          path: ${{ env.APP_DIR }}
 
-      # Checkout RotMGAssetExtractor from its own repo into expected folder path
+      # Checkout RotMGAssetExtractor next to MuledumpNET (solution expects ..\RotMGAssetExtractor)
       - name: Checkout asset extractor repo
         uses: actions/checkout@v4
         with:
           repository: ${{ env.ASSET_REPO }}
-          path: ${{ env.ASSET_PATH }}  # public repo: no token needed
-          # For private repo add: token: ${{ secrets.GH_PAT }}
+          path: ${{ env.ASSET_PATH }}
 
       - name: Setup .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v4
