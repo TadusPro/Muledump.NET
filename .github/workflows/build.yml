@@ -14,26 +14,26 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout Muledump.NET
+      - name: Checkout Muledump.NET repo
         uses: actions/checkout@v4
 
-      - name: Checkout RotMGAssetExtractor
+      - name: Checkout RotMGAssetExtractor repo (sibling folder)
         uses: actions/checkout@v4
         with:
           repository: TadusPro/RotMGAssetExtractor
-          path: ../RotMGAssetExtractor   # exact path solution expects
+          path: RotMGAssetExtractor   # ends up as $GITHUB_WORKSPACE/RotMGAssetExtractor
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore
-        run: dotnet restore
+      - name: Restore solution
+        run: dotnet restore Muledump.NET/Muledump.NET.sln
 
       - name: Publish Muledump.NET
         run: |
-          dotnet publish -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
+          dotnet publish Muledump.NET/Muledump.NET.csproj -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
             -p:WindowsPackageType=None -p:PublishReadyToRun=false -o publish
 
       - name: Package Muledump.NET
