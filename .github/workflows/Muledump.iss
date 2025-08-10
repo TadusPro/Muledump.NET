@@ -128,12 +128,18 @@ end;
 
 // Runs when the uninstaller is initialized
 procedure InitializeUninstall;
+var
+  TopPosition: Integer;
 begin
   // Create a checkbox on the uninstaller confirmation page
   RemoveDataCheckBox := TNewCheckBox.Create(WizardForm);
-  RemoveDataCheckBox.Parent := WizardForm.ConfirmPage;
+  RemoveDataCheckBox.Parent := WizardForm;
   RemoveDataCheckBox.Caption := 'Remove all user data and settings';
   RemoveDataCheckBox.Checked := False;
+
+  // Position the checkbox below the confirmation label
+  TopPosition := WizardForm.ConfirmLabel.Top + WizardForm.ConfirmLabel.Height + 8;
+  RemoveDataCheckBox.SetBounds(WizardForm.ConfirmLabel.Left, TopPosition, WizardForm.ConfirmLabel.Width, RemoveDataCheckBox.Height);
 end;
 
 // Runs when the installer moves to a new step
