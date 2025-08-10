@@ -1,39 +1,28 @@
 ﻿@page "/settings"
 @using MDTadusMod.Services
 @using MDTadusMod.Data
+@using System.Reflection
+@using System.Text.Json.Serialization
 @inject SettingsService SettingsManager
 @inject NavigationManager Navigation
 @implements IDisposable
 
 <div class="table-container">
-	<h1>Settings</h1>
+    <h1>Settings</h1>
 
     <div class="settings-section">
         <h2>Display Settings</h2>
-        
-        <div class="setting-item">
-            <label for="extendedItemContainer">Show Extended Item Container Display Options</label>
-            <input type="checkbox" 
-                   id="extendedItemContainer"
-                   checked="@SettingsManager.GlobalSettings.ShowExtendedItemContainerDisplay"
-                   @onchange="(e) => UpdateGlobalSetting(nameof(SettingsManager.GlobalSettings.ShowExtendedItemContainerDisplay), e.Value)" />
-        </div>
-        
-        <div class="setting-item">
-            <label for="groupRarities">Account for rarity when summarizing items</label>
-            <input type="checkbox"
-                   id="groupRarities"
-                   checked="@SettingsManager.GlobalSettings.GroupRarities"
-                   @onchange="(e) => UpdateGlobalSetting(nameof(SettingsManager.GlobalSettings.GroupRarities), e.Value)" />
-        </div>
-        <div class="setting-item">
-            <label for="checkForUpdates">Check for updates</label>
-            <input type="checkbox"
-                   id="checkForUpdates"
-                   checked="@SettingsManager.GlobalSettings.CheckForUpdates"
-                   @onchange="(e) => UpdateGlobalSetting(nameof(SettingsManager.GlobalSettings.CheckForUpdates), e.Value)" />
-        </div>
 
+        @foreach (var property in GetSettingsProperties())
+        {
+            <div class="setting-item">
+                <label for="@property.Name">@GetSettingLabel(property)</label>
+                <input type="checkbox"
+                       id="@property.Name"
+                       checked="@((bool)property.GetValue(SettingsManager.GlobalSettings))"
+                       @onchange="(e) => UpdateGlobalSetting(property.Name, e.Value)" />
+            </div>
+        }
     </div>
 </div>
 
@@ -41,6 +30,26 @@
     protected override void OnInitialized()
     {
         SettingsManager.OnChange += StateHasChanged;
+    }
+
+    private IEnumerable<PropertyInfo> GetSettingsProperties()
+    {
+        return typeof(GlobalSettings)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.CanRead && p.CanWrite && p.GetCustomAttribute<JsonIgnoreAttribute>() == null && p.PropertyType == typeof(bool));
+    }
+
+    private string GetSettingLabel(PropertyInfo property)
+    {
+        // Use the description from the attribute as the primary label text.
+        var description = property.GetCustomAttribute<SettingDescriptionAttribute>()?.Description;
+        if (!string.IsNullOrEmpty(description))
+        {
+            return description;
+        }
+
+        // Fallback for properties without a description attribute.
+        return System.Text.RegularExpressions.Regex.Replace(property.Name, "(\\B[A-Z])", " $1");
     }
 
     private void UpdateGlobalSetting(string propertyName, object value)
