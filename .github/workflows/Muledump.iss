@@ -6,7 +6,7 @@
 #endif
 
 [Setup]
-AppId={{8E2E4B6C-2A2C-4F7A-9C2F-7A1A7F1A3F11}
+AppId={{8E2E4B6C-2A2C-4F7A-9C2F-7A1A7F1A3F11}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher=Muledump
@@ -71,7 +71,7 @@ begin
     False, 'Muledump.NET');
   DataDirPage.Add('Data folder:');
 
-  ; Prefill with previous choice if present
+  // Prefill with previous choice if present
   if RegQueryStringValue(HKCU, 'Software\' + '{#MyAppName}', 'DataDir', PrevData) and (PrevData <> '') then
     DataDirPage.Values[0] := PrevData
   else
