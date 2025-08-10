@@ -1,26 +1,78 @@
-﻿; Inno Setup script for Muledump.NET
-#define MyAppName "Muledump.NET"
-#define MyAppExe  "Muledump.NET.exe"
-; CI passes /DMyAppVersion=...; default here for local builds
-#ifndef MyAppVersion
-  #define MyAppVersion "0.1.0"
-#endif
+﻿name: Muledump.NET Build & Release
 
-[Setup]
-; ensure x64 install location
-ArchitecturesAllowed=x64
-ArchitecturesInstallIn64BitMode=x64
+on:
+  push:
+    branches:
+      - main        # run on every commit to main
+    tags:
+      - 'v*.*.*'    # also run on version tags
+  workflow_dispatch: {}
 
-[Files]
-; Package everything produced by dotnet publish
-Source: "..\..\publish\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion replacesameversion
+permissions:
+  contents: write
 
-[Icons]
-Name: "{group}\Muledump.NET"; Filename: "{app}\Muledump.NET.exe"; WorkingDir: "{app}"
-Name: "{userdesktop}\Muledump.NET"; Filename: "{app}\Muledump.NET.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+jobs:
+  build:
+    runs-on: windows-latest
 
-[Tasks]
-Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional icons:"; Flags: unchecked
+    steps:
+      - name: Checkout Muledump.NET repo
+        uses: actions/checkout@v4
 
-[Run]
-Filename: "{app}\Muledump.NET.exe"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
+      - name: Checkout RotMGAssetExtractor (temp)
+        uses: actions/checkout@v4
+        with:
+          repository: TadusPro/RotMGAssetExtractor
+          path: RotMGAssetExtractor_temp
+
+      - name: Move extractor up one level so path matches '..\\RotMGAssetExtractor'
+        shell: pwsh
+        run: Move-Item -Force RotMGAssetExtractor_temp ..\RotMGAssetExtractor
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore deps
+        run: dotnet restore
+
+      - name: Publish Muledump.NET (same command you run locally)
+        run: |
+          dotnet publish -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
+            -p:WindowsPackageType=None -p:PublishReadyToRun=false -o publish
+
+      - name: Zip output
+        shell: pwsh
+        run: Compress-Archive -Path "publish/*" -DestinationPath "Muledump.NET-win-x64.zip"
+
+      - name: Install & build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup -y
+          if ("${{ github.ref }}".StartsWith("refs/tags/v")) {
+            $v = "${{ github.ref_name }}".TrimStart('v')
+          } else {
+            $v = "0.0.${{ github.run_number }}"
+          }
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .github\workflows\Muledump.iss /DMyAppVersion=$v
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Muledump.NET-build
+          path: |
+            Muledump.NET-win-x64.zip
+            installer/Muledump.NET-Setup.exe
+
+      - name: Upload assets to the "latest" release (always)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest
+          files: |
+            Muledump.NET-win-x64.zip
+            installer/Muledump.NET-Setup.exe
+          make_latest: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          skip_if_release_exists: false
