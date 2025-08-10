@@ -5,3 +5,31 @@
     gap: 10px; /* Modern way to handle spacing for flexbox */
     padding: 5px;
 }
+.no-accounts-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+
+}
+.no-accounts-container h1 {
+    margin: 0;
+    padding-top: 100px;
+}
+    .no-accounts-container p {
+        width:260px;
+    }
+.no-accounts-container button {
+    display: inline-block;
+    cursor: pointer;
+    padding: 3px 8px 0;
+    height: 20px;
+    background: #424242;
+    box-shadow: 2px 2px 8px #111;
+    border: none;
+    letter-spacing: .02em;
+    margin-left: 4px;
+    position: relative;
+    user-select: none;
+    color: #ccc;
+}
