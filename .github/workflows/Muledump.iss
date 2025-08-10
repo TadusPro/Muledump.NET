@@ -58,8 +58,8 @@ begin
     wpSelectDir,
     'Choose Data Location',
     'Where should Muledump.NET store its data?',
-    'Choose a writable folder. If unsure, keep the default.'
-  );
+    'Choose a writable folder. If unsure, keep the default.',
+    False, 'Muledump.NET');
   DataDirPage.Add('Data folder:');
   DataDirPage.Values[0] := ExpandConstant('{userappdata}\{#MyAppName}');
 end;
