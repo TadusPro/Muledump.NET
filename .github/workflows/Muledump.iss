@@ -4,6 +4,9 @@
 #ifndef MyAppVersion
   #define MyAppVersion "0.1.0"
 #endif
+#ifndef InstallerHash
+  #define InstallerHash ""
+#endif
 
 [Setup]
 AppId={{8E2E4B6C-2A2C-4F7A-9C2F-7A1A7F1A3F11}}
@@ -41,9 +44,56 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "Installing WebView2 runtime..."; Check: not WebView2Present
 Filename: "{app}\{#MyAppExe}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
 
+[UninstallDelete]
+Type: filesandordirs; Name: "{code:GetInstalledDataDir}"; Check: ShouldRemoveData
+
+[Registry]
+Root: HKCU; Subkey: "Software\{#MyAppName}"; ValueType: string; ValueName: "DataDir"; ValueData: "{code:GetChosenDataDir}"; Flags: uninsdeletekeyifempty
+
 [Code]
 var
   DataDirPage: TInputDirWizardPage;
+  RemoveDataCheckBox: TNewCheckBox;
+
+procedure SaveInstallerHash;
+var
+  Hash: String;
+  Path: String;
+begin
+  Hash := '{#InstallerHash}';
+  if Trim(Hash) <> '' then
+  begin
+    Path := ExpandConstant(GetChosenDataDir('') + '\Updates\last_installer.sha256');
+    ForceDirectories(ExtractFilePath(Path));
+    SaveStringToFile(Path, Hash, False);
+  end;
+end;
+
+function GetInstalledDataDir(Param: string): string;
+var
+  DataDir: string;
+begin
+  // Read the stored data directory path from the registry
+  if RegQueryStringValue(HKCU, 'Software\' + '{#MyAppName}', 'DataDir', DataDir) then
+    Result := DataDir
+  else
+    // Fallback to the default if registry key not found
+    Result := ExpandConstant('{userappdata}\{#MyAppName}');
+end;
+
+procedure InitializeUninstall;
+begin
+  // Create a checkbox on the uninstaller confirmation page
+  RemoveDataCheckBox := TNewCheckBox.Create(WizardForm);
+  RemoveDataCheckBox.Parent := WizardForm.ConfirmPage;
+  RemoveDataCheckBox.Caption := 'Remove all user data and settings';
+  RemoveDataCheckBox.Checked := False;
+end;
+
+function ShouldRemoveData: Boolean;
+begin
+  Result := (Assigned(RemoveDataCheckBox) and RemoveDataCheckBox.Checked);
+end;
 
 function WebView2Present: Boolean;
 begin
@@ -89,8 +139,6 @@ begin
     if D = '' then
       D := ExpandConstant('{userappdata}\{#MyAppName}');
     ForceDirectories(D);
+    SaveInstallerHash();
   end;
 end;
-
-[Registry]
-Root: HKCU; Subkey: "Software\{#MyAppName}"; ValueType: string; ValueName: "DataDir"; ValueData: "{code:GetChosenDataDir}"; Flags: uninsdeletekeyifempty

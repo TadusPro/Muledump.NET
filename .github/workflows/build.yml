@@ -30,16 +30,16 @@ jobs:
         run: Move-Item -Force RotMGAssetExtractor_temp ..\RotMGAssetExtractor
 
       - name: Setup .NET 8
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotNET@v4
         with:
           dotnet-version: '8.0.x'
 
       - name: Restore deps
-        run: dotnet restore
+        run: dotNET restore
 
       - name: Publish Muledump.NET (same command you run locally)
         run: |
-          dotnet publish -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
+          dotNET publish -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
             -p:WindowsPackageType=None -p:PublishReadyToRun=false -o publish
 
       - name: Download WebView2 runtime (Evergreen bootstrapper)
@@ -48,6 +48,14 @@ jobs:
       - name: Zip output (portable)
         shell: pwsh
         run: Compress-Archive -Path "publish/*" -DestinationPath "Muledump.NET-portable-windows-x64.zip"
+
+      - name: Create SHA256 for installer
+        shell: pwsh
+        run: |
+          $f = "installer/Muledump.NET-setup-windows-x64.exe"
+          $hash = (Get-FileHash -Algorithm SHA256 $f).Hash
+          $hash | Out-File "$f.sha256" -Encoding ascii
+          echo "INSTALLER_HASH=$hash" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Install & build installer (Inno Setup)
         shell: pwsh
@@ -58,13 +66,7 @@ jobs:
           } else {
             $v = "0.0.${{ github.run_number }}"
           }
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .github\workflows\Muledump.iss /DMyAppVersion=$v
-
-      - name: Create SHA256 for installer
-        shell: pwsh
-        run: |
-          $f = "installer/Muledump.NET-setup-windows-x64.exe"
-          (Get-FileHash -Algorithm SHA256 $f).Hash | Out-File "$f.sha256" -Encoding ascii
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .github\workflows\Muledump.iss /DMyAppVersion=$v /DInstallerHash="${{ env.INSTALLER_HASH }}"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
