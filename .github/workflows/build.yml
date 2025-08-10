@@ -30,16 +30,16 @@ jobs:
         run: Move-Item -Force RotMGAssetExtractor_temp ..\RotMGAssetExtractor
 
       - name: Setup .NET 8
-        uses: actions/setup-dotNET@v4
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
       - name: Restore deps
-        run: dotNET restore
+        run: dotnet restore
 
       - name: Publish Muledump.NET (same command you run locally)
         run: |
-          dotNET publish -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
+          dotnet publish -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
             -p:WindowsPackageType=None -p:PublishReadyToRun=false -o publish
 
       - name: Download WebView2 runtime (Evergreen bootstrapper)
@@ -49,15 +49,8 @@ jobs:
         shell: pwsh
         run: Compress-Archive -Path "publish/*" -DestinationPath "Muledump.NET-portable-windows-x64.zip"
 
-      - name: Create SHA256 for installer
-        shell: pwsh
-        run: |
-          $f = "installer/Muledump.NET-setup-windows-x64.exe"
-          $hash = (Get-FileHash -Algorithm SHA256 $f).Hash
-          $hash | Out-File "$f.sha256" -Encoding ascii
-          echo "INSTALLER_HASH=$hash" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
       - name: Install & build installer (Inno Setup)
+        id: build_installer # Add an id to this step
         shell: pwsh
         run: |
           choco install innosetup -y
@@ -66,6 +59,27 @@ jobs:
           } else {
             $v = "0.0.${{ github.run_number }}"
           }
+          # We don't pass the hash here anymore
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .github\workflows\Muledump.iss /DMyAppVersion=$v
+
+      - name: Create SHA256 for installer and pass to next step
+        id: hash_installer # Add an id to this step
+        shell: pwsh
+        run: |
+          $f = "installer/Muledump.NET-setup-windows-x64.exe"
+          $hash = (Get-FileHash -Algorithm SHA256 $f).Hash
+          $hash | Out-File "$f.sha256" -Encoding ascii
+          echo "INSTALLER_HASH=$hash" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Re-run installer build to embed hash (fast)
+        shell: pwsh
+        run: |
+          if ("${{ github.ref }}".StartsWith("refs/tags/v")) {
+            $v = "${{ github.ref_name }}".TrimStart('v')
+          } else {
+            $v = "0.0.${{ github.run_number }}"
+          }
+          # Now we pass the hash
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .github\workflows\Muledump.iss /DMyAppVersion=$v /DInstallerHash="${{ env.INSTALLER_HASH }}"
 
       - name: Upload build artifacts
