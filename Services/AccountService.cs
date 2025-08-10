@@ -1,104 +1,97 @@
 using MDTadusMod.Data;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Threading.Tasks;
 using System.Xml.Serialization;
+using System.Linq;
 
 namespace MDTadusMod.Services
 {
     public class AccountService
     {
+        private readonly IAppPaths _paths;
         private readonly string _basePath;
         private readonly string _accountsFilePath;
         private readonly string _accountDataPath;
 
-        public AccountService()
+        public AccountService(IAppPaths paths)
         {
-            _basePath = FileSystem.AppDataDirectory;
-            _accountsFilePath = Path.Combine(_basePath, "accounts.xml"); // Changed to .xml
-            _accountDataPath = Path.Combine(_basePath, "AccountData");
-
-            // Ensure the directory for individual account data exists
-            if (!Directory.Exists(_accountDataPath))
-            {
-                Directory.CreateDirectory(_accountDataPath);
-            }
+            _paths = paths;
+            _basePath = _paths.DataDir;
+            _accountsFilePath = _paths.Combine("accounts.xml");
+            _accountDataPath = _paths.Combine("AccountData");
+            Directory.CreateDirectory(_basePath);
+            Directory.CreateDirectory(_accountDataPath);
         }
 
         public async Task<List<Account>> GetAccountsAsync()
         {
             if (!File.Exists(_accountsFilePath))
+                return new List<Account>();
+
+            try
             {
+                var ser = new XmlSerializer(typeof(List<Account>));
+                using var fs = File.OpenRead(_accountsFilePath);
+                var accounts = (List<Account>?)ser.Deserialize(fs) ?? new();
+
+                bool touched = false;
+                foreach (var a in accounts)
+                {
+                    if (a.Id == Guid.Empty)
+                    {
+                        a.Id = Guid.NewGuid();
+                        touched = true;
+                    }
+                }
+                if (touched)
+                    await SaveAccountsAsync(accounts);
+
+                return accounts;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AccountService] Read accounts failed: {ex}");
                 return new List<Account>();
             }
-
-            var serializer = new XmlSerializer(typeof(List<Account>));
-            var xmlContent = await File.ReadAllTextAsync(_accountsFilePath);
-
-            List<Account> accounts;
-            using (var stringReader = new StringReader(xmlContent))
-            {
-                accounts = (List<Account>)serializer.Deserialize(stringReader);
-            }
-
-            bool wasModified = false;
-            foreach (var account in accounts)
-            {
-                if (account.Id == Guid.Empty)
-                {
-                    account.Id = Guid.NewGuid();
-                    wasModified = true;
-                }
-            }
-
-            if (wasModified)
-            {
-                await SaveAccountsAsync(accounts);
-            }
-
-            return accounts;
         }
 
         public async Task SaveAccountsAsync(List<Account> accounts)
         {
-            var serializer = new XmlSerializer(typeof(List<Account>));
-
-            using (var stringWriter = new StringWriter())
+            try
             {
-                serializer.Serialize(stringWriter, accounts);
-                var xmlContent = stringWriter.ToString();
-                await File.WriteAllTextAsync(_accountsFilePath, xmlContent);
+                Directory.CreateDirectory(Path.GetDirectoryName(_accountsFilePath)!);
+                var ser = new XmlSerializer(typeof(List<Account>));
+                using var fs = File.Create(_accountsFilePath);
+                ser.Serialize(fs, accounts);
+                await fs.FlushAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AccountService] Save accounts failed: {ex}");
             }
         }
 
-        public async Task<AccountData> GetAccountDataAsync(Guid accountId)
+        public async Task<AccountData?> GetAccountDataAsync(Guid accountId)
         {
             var filePath = Path.Combine(_accountDataPath, $"{accountId}.xml");
             if (!File.Exists(filePath))
-            {
                 return null;
-            }
 
             try
             {
-                var serializer = new XmlSerializer(typeof(AccountData));
-                var xmlContent = await File.ReadAllTextAsync(filePath);
+                var ser = new XmlSerializer(typeof(AccountData));
+                using var fs = File.OpenRead(filePath);
+                var data = (AccountData?)ser.Deserialize(fs);
 
-                using (var stringReader = new StringReader(xmlContent))
-                {
-                    var data = (AccountData)serializer.Deserialize(stringReader);
-                    // Rehydrate equipment for all characters
-                    if (data?.Characters != null)
-                        foreach (var c in data.Characters)
-                            c.RehydrateEquipment();
-                    return data;
-                }
+                if (data?.Characters != null)
+                    foreach (var c in data.Characters)
+                        c.RehydrateEquipment();
+
+                return data;
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                Debug.WriteLine($"[AccountService] Failed to deserialize account data for {accountId}. Deleting cached file. Error: {ex.Message}");
-                File.Delete(filePath);
+                Debug.WriteLine($"[AccountService] Failed to deserialize {accountId}: {ex.Message}. Deleting cache.");
+                try { File.Delete(filePath); } catch { }
                 return null;
             }
         }
@@ -106,28 +99,34 @@ namespace MDTadusMod.Services
         public async Task SaveAccountDataAsync(AccountData data)
         {
             var filePath = Path.Combine(_accountDataPath, $"{data.AccountId}.xml");
-            var serializer = new XmlSerializer(typeof(AccountData));
-
-            using (var stringWriter = new StringWriter())
+            try
             {
-                serializer.Serialize(stringWriter, data);
-                var xmlContent = stringWriter.ToString();
-                await File.WriteAllTextAsync(filePath, xmlContent);
+                Directory.CreateDirectory(_accountDataPath);
+                var ser = new XmlSerializer(typeof(AccountData));
+                using var fs = File.Create(filePath);
+                ser.Serialize(fs, data);
+                await fs.FlushAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AccountService] SaveAccountData failed for {data.AccountId}: {ex}");
             }
         }
+
         public async Task DeleteAccountAsync(Guid accountId)
         {
             var accounts = await GetAccountsAsync();
-            var accountToRemove = accounts.FirstOrDefault(a => a.Id == accountId);
-            if (accountToRemove != null)
+            var toRemove = accounts.FirstOrDefault(a => a.Id == accountId);
+            if (toRemove != null)
             {
-                accounts.Remove(accountToRemove);
+                accounts.Remove(toRemove);
                 await SaveAccountsAsync(accounts);
-                var filePath = Path.Combine(_accountDataPath, $"{accountId}.xml");
-                if (File.Exists(filePath))
-                {
-                    File.Delete(filePath);
-                }
+            }
+
+            var filePath = Path.Combine(_accountDataPath, $"{accountId}.xml");
+            if (File.Exists(filePath))
+            {
+                try { File.Delete(filePath); } catch (Exception ex) { Debug.WriteLine(ex); }
             }
         }
     }

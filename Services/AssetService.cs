@@ -1,30 +1,35 @@
 ﻿using MDTadusMod.Data;
 using RotMGAssetExtractor.Model;
-using System.Diagnostics;
-using RotMGAssetExtractor.Flatc;
+using RotMGAssetExtractor.ModelHelpers;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using System.Diagnostics;
 using System.Reflection;
-using RotMGAssetExtractor.ModelHelpers;
 
 namespace MDTadusMod.Services
 {
     public class AssetService
     {
-        private static Task _initializationTask;
+        // --- static shared state (unchanged pattern) ---
+        private static Task? _initializationTask;
         private static readonly object _initLock = new();
         private static bool _initSucceeded = false;
-        private static Exception _initError;
+        private static Exception? _initError;
+        private static string? _dataDir; // <- set from DI
 
-        private static Dictionary<int, string> _classIdToNameMap;
-        private static Dictionary<int, Dictionary<string, int>> _maxStatsPerClass;
-        private static Dictionary<int, string> _pcStatIdToNameMap;
-        private static Dictionary<string, int> _pcStatNameToIdMap;
-        private static Dictionary<int, FameBonus> _fameBonuses;
-        private static Dictionary<int, object> _itemModelsById;
+        private static Dictionary<int, string> _classIdToNameMap = new();
+        private static Dictionary<int, Dictionary<string, int>> _maxStatsPerClass = new();
+        private static Dictionary<int, string> _pcStatIdToNameMap = new();
+        private static Dictionary<string, int> _pcStatNameToIdMap = new();
+        private static Dictionary<int, FameBonus> _fameBonuses = new();
+        private static Dictionary<int, object> _itemModelsById = new();
 
-
-        public AssetService() => Initialize();
+        // DI ctor: capture the chosen data directory
+        public AssetService(IAppPaths paths)
+        {
+            _dataDir ??= paths.DataDir; // set once for the static init
+            Initialize();
+        }
 
         private void Initialize()
         {
@@ -36,8 +41,8 @@ namespace MDTadusMod.Services
                 {
                     try
                     {
-                        await RotMGAssetExtractor.RotMGAssetExtractor
-                            .InitAsync(Microsoft.Maui.Storage.FileSystem.AppDataDirectory);
+                        // Use the installer-selected data dir
+                        await RotMGAssetExtractor.RotMGAssetExtractor.InitAsync(_dataDir!);
                         await BuildAssetData();
                         _initSucceeded = true;
                     }
@@ -45,30 +50,29 @@ namespace MDTadusMod.Services
                     {
                         _initError = ex;
                         _initSucceeded = false;
-                        Debug.WriteLine("[AssetService] Reciving GameData Failed: " + ex);
+                        Debug.WriteLine("[AssetService] Receiving GameData failed: " + ex);
                     }
                 });
             }
         }
+
         private static async Task<bool> Ready()
         {
-            if (_initializationTask == null) return false;
-            try { await _initializationTask; } catch { }
+            var t = _initializationTask;
+            if (t == null) return false;
+            try { await t; } catch { }
             return _initSucceeded;
         }
 
-
         private static Task BuildAssetData()
         {
-            // Initialize dictionaries
-            _maxStatsPerClass = new Dictionary<int, Dictionary<string, int>>();
-            _classIdToNameMap = new Dictionary<int, string>();
-            _itemModelsById = new Dictionary<int, object>();
-            _pcStatIdToNameMap = new Dictionary<int, string>();
-            _pcStatNameToIdMap = new Dictionary<string, int>();
-            _fameBonuses = new Dictionary<int, FameBonus>();
+            _maxStatsPerClass = new();
+            _classIdToNameMap = new();
+            _itemModelsById = new();
+            _pcStatIdToNameMap = new();
+            _pcStatNameToIdMap = new();
+            _fameBonuses = new();
 
-            // Build Item and Player Data
             var itemTypes = new[] { "Player", "Equipment", "Skin", "Dye", "Emote", "Entrance", "PetSkin", "PetAbility" };
             foreach (var itemType in itemTypes)
             {
@@ -78,7 +82,6 @@ namespace MDTadusMod.Services
                     {
                         _itemModelsById[item.type] = item;
 
-                        // Special handling for Player types
                         if (item is Player player)
                         {
                             var classStats = new Dictionary<string, int>
@@ -89,8 +92,8 @@ namespace MDTadusMod.Services
                                 { "Defense", player.Defense.Max },
                                 { "Speed", player.Speed.Max },
                                 { "Dexterity", player.Dexterity.Max },
-                                { "Vitality", player.HpRegen.Max }, // Assuming HpRegen maps to Vitality
-                                { "Wisdom", player.MpRegen.Max }   // Assuming MpRegen maps to Wisdom
+                                { "Vitality", player.HpRegen.Max }, // HpRegen -> Vitality
+                                { "Wisdom", player.MpRegen.Max }    // MpRegen -> Wisdom
                             };
                             _maxStatsPerClass[player.type] = classStats;
                             _classIdToNameMap[player.type] = player.id;
@@ -99,55 +102,38 @@ namespace MDTadusMod.Services
                 }
             }
 
-            // Build PC Stat Name Data
             if (RotMGAssetExtractor.RotMGAssetExtractor.BuildModelsByType.TryGetValue("PlayerStat", out var statObjects))
             {
-                var stats = statObjects.Cast<PlayerStat>();
-                foreach (var stat in stats)
+                foreach (var stat in statObjects.Cast<PlayerStat>())
                 {
-                    // Prioritize displayName, but fall back to id if it's empty
                     var statName = !string.IsNullOrEmpty(stat.displayName) ? stat.displayName : stat.id;
-                    if (stat.dungeon)
-                    {
-                        statName = stat.dungeonId;
-                    }
+                    if (stat.dungeon) statName = stat.dungeonId;
                     _pcStatIdToNameMap[stat.index] = statName;
                     if (!string.IsNullOrEmpty(stat.id))
-                    {
                         _pcStatNameToIdMap[stat.id] = stat.index;
-                    }
                 }
                 Debug.WriteLine($"[AssetService] Loaded {_pcStatIdToNameMap.Count} PC stat names.");
             }
             else
             {
-                Debug.WriteLine("[AssetService] 'PlayerStat' models not found in asset data.");
+                Debug.WriteLine("[AssetService] 'PlayerStat' models not found.");
             }
 
-            // Build Fame Bonus Data
             if (RotMGAssetExtractor.RotMGAssetExtractor.BuildModelsByType.TryGetValue("FameBonus", out var fameBonusObjects))
             {
-                var bonuses = fameBonusObjects.Cast<FameBonus>();
-                foreach (var bonus in bonuses)
-                {
+                foreach (var bonus in fameBonusObjects.Cast<FameBonus>())
                     _fameBonuses[bonus.code] = bonus;
-                }
                 Debug.WriteLine($"[AssetService] Loaded {_fameBonuses.Count} FameBonuses.");
             }
             else
             {
-                Debug.WriteLine("[AssetService] 'FameBonus' models not found in asset data.");
+                Debug.WriteLine("[AssetService] 'FameBonus' models not found.");
             }
 
             if (_itemModelsById.Count > 0)
-            {
                 Debug.WriteLine($"[AssetService] Loaded {_itemModelsById.Count} textures.");
-            }
             else
-            {
-                Debug.WriteLine("[AssetService] 'texture' models not found in asset data.");
-
-            }
+                Debug.WriteLine("[AssetService] 'texture' models not found.");
 
             return Task.CompletedTask;
         }
@@ -155,39 +141,27 @@ namespace MDTadusMod.Services
         public static async Task<string> GetPetAbilityNameById(int id)
         {
             if (!await Ready()) return "Unknown";
-
-            if (_itemModelsById.TryGetValue(id, out var itemModel) && itemModel is RotMGAssetExtractor.Model.PetAbility petAbility)
-            {
-                return petAbility.id;
-            }
+            if (_itemModelsById.TryGetValue(id, out var m) && m is RotMGAssetExtractor.Model.PetAbility pa)
+                return pa.id;
             return $"Ability #{id}";
         }
 
         public static async Task<string> GetPetSkinDisplayNameById(int skinId)
         {
             if (!await Ready()) return "Unknown";
-
-            if (_itemModelsById.TryGetValue(skinId, out var itemModel) && itemModel is PetSkin petSkin)
-            {
-                return petSkin.DisplayId; // 'id' holds the display name for PetSkin models
-            }
-
+            if (_itemModelsById.TryGetValue(skinId, out var m) && m is PetSkin ps)
+                return ps.DisplayId;
             return "Unknown";
         }
 
         public static async Task<bool> IsStatMaxed(Character character, string statName)
         {
             if (!await Ready() || character == null) return false;
-            
 
             var maxStats = await GetMaxStatsForClass(character.ObjectType);
-            if (maxStats == null)
-            {
-                return false;
-            }
+            if (maxStats == null) return false;
 
-            // Map lowercase stat names from conditions to PascalCase keys in the dictionary
-            var statMap = new Dictionary<string, string>
+            var statMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 { "health", "MaxHitPoints" },
                 { "magic", "MaxMagicPoints" },
@@ -199,17 +173,10 @@ namespace MDTadusMod.Services
                 { "wisdom", "Wisdom" }
             };
 
-            if (!statMap.TryGetValue(statName, out var mappedStatName))
-            {
-                return false;
-            }
+            if (!statMap.TryGetValue(statName, out var mapped)) return false;
+            if (!maxStats.TryGetValue(mapped, out var max)) return false;
 
-            if (!maxStats.TryGetValue(mappedStatName, out var maxStatValue))
-            {
-                return false;
-            }
-
-            int currentStatValue = statName switch
+            int current = statName.ToLowerInvariant() switch
             {
                 "health" => character.MaxHitPoints,
                 "magic" => character.MaxMagicPoints,
@@ -221,33 +188,20 @@ namespace MDTadusMod.Services
                 "wisdom" => character.Wisdom,
                 _ => -1
             };
-
-            bool isMaxed = currentStatValue >= maxStatValue;
-            return isMaxed;
+            return current >= max;
         }
 
         public static async Task<int> GetMaxedStatsCount(Character character)
         {
-            if (!await Ready() || character == null)
-            {
-                return 0;
-            }
-
-            int maxedStatsCount = 0;
-            var statNames = new[] { "health", "magic", "attack", "defense", "speed", "dexterity", "vitality", "wisdom" };
-
-            foreach (var statName in statNames)
-            {
-                if (await IsStatMaxed(character, statName))
-                {
-                    maxedStatsCount++;
-                }
-            }
-
-            return maxedStatsCount;
+            if (!await Ready() || character == null) return 0;
+            var names = new[] { "health", "magic", "attack", "defense", "speed", "dexterity", "vitality", "wisdom" };
+            var count = 0;
+            foreach (var n in names)
+                if (await IsStatMaxed(character, n)) count++;
+            return count;
         }
 
-        public static async Task<Dictionary<string, int>> GetMaxStatsForClass(int classType)
+        public static async Task<Dictionary<string, int>?> GetMaxStatsForClass(int classType)
         {
             if (!await Ready()) return null;
             _maxStatsPerClass.TryGetValue(classType, out var stats);
@@ -264,97 +218,69 @@ namespace MDTadusMod.Services
         {
             if (!await Ready()) return "Unknown";
             return _classIdToNameMap.GetValueOrDefault(id, "Unknown");
-
         }
 
         public static async Task<string> GetPCStatName(int id)
         {
-            await _initializationTask;
+            await (_initializationTask ?? Task.CompletedTask);
             return _pcStatIdToNameMap.GetValueOrDefault(id, $"#{id}");
         }
 
         public static async Task<Dictionary<string, int>> GetPCStatNameToIdMap()
         {
-            await _initializationTask;
+            await (_initializationTask ?? Task.CompletedTask);
             return _pcStatNameToIdMap;
         }
 
-        public static async Task<FameBonus> GetFameBonusByCode(int code)
+        public static async Task<FameBonus?> GetFameBonusByCode(int code)
         {
-            await _initializationTask;
+            await (_initializationTask ?? Task.CompletedTask);
             _fameBonuses.TryGetValue(code, out var bonus);
-            return bonus; // Will be null if not found
+            return bonus;
         }
+
         public static async Task<ICollection<FameBonus>> GetAllFameBonuses()
         {
-            await _initializationTask;
+            await (_initializationTask ?? Task.CompletedTask);
             return _fameBonuses.Values;
         }
 
-        public async Task<string> GetItemImageAsBase64Async(int itemId)
+        public async Task<string?> GetItemImageAsBase64Async(int itemId)
         {
             if (!await Ready())
             {
-                Debug.WriteLine("[AssetService] Initialization not complete. Cannot retrieve item image " + itemId);
+                Debug.WriteLine($"[AssetService] Init not complete. Cannot retrieve item image {itemId}");
                 return null;
             }
-            if(itemId == 9505)
-            {
-                Debug.Write("[AssetService] Starting imggathering from character");
-            }
-
 
             if (!_itemModelsById.TryGetValue(itemId, out var itemModel))
             {
-                Debug.WriteLine($"[AssetService] Warning: Item model not found for ID: {itemId}");
+                Debug.WriteLine($"[AssetService] Item model not found for ID: {itemId}");
                 return null;
             }
 
-            ITexture texture = null;
+            ITexture? texture = null;
             var modelType = itemModel.GetType();
 
-            // Prioritize AnimatedTexture property if it exists
-            PropertyInfo animatedTextureProp = modelType.GetProperty("AnimatedTexture");
-            if (animatedTextureProp != null)
-            {
-                var animatedTexture = animatedTextureProp.GetValue(itemModel) as ITexture;
-                // Check that the texture object exists and its File property is not empty.
-                if (animatedTexture != null && !string.IsNullOrEmpty(animatedTexture.File))
-                {
-                    texture = animatedTexture;
-                }
-            }
-
-            // Fallback to Texture property if AnimatedTexture is not found or is null
-            if (texture == null)
-            {
-                PropertyInfo textureProp = modelType.GetProperty("Texture");
-                if (textureProp != null)
-                {
-                    texture = textureProp.GetValue(itemModel) as ITexture;
-                }
-            }
+            var animatedTextureProp = modelType.GetProperty("AnimatedTexture");
+            if (animatedTextureProp?.GetValue(itemModel) is ITexture at && !string.IsNullOrEmpty(at.File))
+                texture = at;
 
             if (texture == null)
             {
-                Debug.WriteLine($"[AssetService] Warning: Texture object is null for item ID: {itemId} (Type: {itemModel.GetType().Name})");
-                return null;
+                var textureProp = modelType.GetProperty("Texture");
+                if (textureProp?.GetValue(itemModel) is ITexture t)
+                    texture = t;
             }
 
-            // Add a resiliency check to ensure the texture data is valid before proceeding.
-            if (string.IsNullOrEmpty(texture.File))
+            if (texture == null || string.IsNullOrEmpty(texture.File))
             {
-                Debug.WriteLine($"[AssetService] Warning: Texture for item ID {itemId} has an invalid (null or empty) File property. Skipping image retrieval.");
+                Debug.WriteLine($"[AssetService] Texture missing/invalid for item {itemId} ({itemModel.GetType().Name})");
                 return null;
             }
 
-            var image = ImageBuffer.GetImage(texture, itemId);
-
-            if (image == null)
-            {
-                //Debug.WriteLine($"[AssetService] Warning: ImageBuffer returned null for item ID: {itemId}");
-                return null;
-            }
+            var image = RotMGAssetExtractor.Flatc.ImageBuffer.GetImage(texture, itemId);
+            if (image == null) return null;
 
             return ConvertImageToBase64(image);
         }
