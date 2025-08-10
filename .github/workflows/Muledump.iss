@@ -14,7 +14,7 @@ DefaultGroupName={#MyAppName}
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 OutputDir=..\..\installer
-OutputBaseFilename={#MyAppName}-Setup
+OutputBaseFilename=Muledump.NET-setup-windows-x64
 Compression=lzma
 SolidCompression=yes
 

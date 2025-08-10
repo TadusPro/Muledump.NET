@@ -3,9 +3,7 @@ name: Muledump.NET Build & Release
 on:
   push:
     branches:
-      - main        # run on every commit to main
-    tags:
-      - 'v*.*.*'    # also run on version tags
+      - main
   workflow_dispatch: {}
 
 permissions:
@@ -45,9 +43,9 @@ jobs:
       - name: Download WebView2 runtime (Evergreen bootstrapper)
         run: curl -L "https://go.microsoft.com/fwlink/p/?LinkId=2124703" -o publish\MicrosoftEdgeWebview2Setup.exe
 
-      - name: Zip output
+      - name: Zip output (portable)
         shell: pwsh
-        run: Compress-Archive -Path "publish/*" -DestinationPath "Muledump.NET-win-x64.zip"
+        run: Compress-Archive -Path "publish/*" -DestinationPath "Muledump.NET-portable-windows-x64.zip"
 
       - name: Install & build installer (Inno Setup)
         shell: pwsh
@@ -65,8 +63,8 @@ jobs:
         with:
           name: Muledump.NET-build
           path: |
-            Muledump.NET-win-x64.zip
-            installer/Muledump.NET-Setup.exe
+            Muledump.NET-portable-windows-x64.zip
+            installer/Muledump.NET-setup-windows-x64.exe
 
       - name: Upload assets to the "latest" release (always)
         uses: softprops/action-gh-release@v2
@@ -74,8 +72,8 @@ jobs:
           tag_name: latest
           name: Latest
           files: |
-            Muledump.NET-win-x64.zip
-            installer/Muledump.NET-Setup.exe
+            Muledump.NET-portable-windows-x64.zip
+            installer/Muledump.NET-setup-windows-x64.exe
           make_latest: true
           token: ${{ secrets.GITHUB_TOKEN }}
           skip_if_release_exists: false
