@@ -7,7 +7,7 @@
 @inject IJSRuntime JSRuntime
 @implements IAsyncDisposable
 
-@if (Account != null && ViewOptions != null)
+@if (Account != null && VO != null)
 {
     <div @ref="_muleContainer" class="mule">
 
@@ -20,7 +20,7 @@
         
 
 
-        @if (ViewOptions.Email)
+        @if (VO.Email)
         {
             <input type="text" readonly="readonly" class="guid" value="@Account.Email">
         }
@@ -32,7 +32,7 @@
                     <span class="star" style="color: @GetStarColor(AccountData.Star)">★</span>
                 </span>
             }
-            @if (ViewOptions.IGN)
+            @if (VO.IGN)
             {
                 <p class="mule-name" style="grid-column: 2;">@(AccountData?.Name ?? Account.Email)</p>
             }
@@ -41,12 +41,14 @@
             </button>
         </header>
 
-        @if (!ViewOptions.Shrink && ViewOptions.Characters && (AccountData?.Characters?.Any() == true))
+        @if (!VO.Shrink && VO.Characters && (AccountData?.Characters?.Any() == true) && (
+            VO.CharDescription || VO.Stats || VO.Exalts || VO.AdditionalGoals || VO.AdditionalStats || 
+            VO.AdditionalBonuses || VO.Equipment || VO.Inventory || VO.Quickslots))
         {
             <div class="chars" style="--char-row-length: @_effectiveCharRowLength;">
                 @{
                     IOrderedEnumerable<Character> orderedCharacters;
-                    switch (ViewOptions.CharOrder)
+                    switch (VO.CharOrder)
                     {
                         case CharOrder.time:
                             orderedCharacters = AccountData.Characters.OrderByDescending(c => c.ParsedPCStats.GetValueOrDefault(20, 0L));
@@ -71,7 +73,7 @@
                     foreach (var character in orderedCharacters)
                     {
                         <CharacterCard Character="character"
-                                       ViewOptions="ViewOptions"
+                                       ViewOptions="VO"
                                        MaxStatsPerClass="MaxStatsPerClass"
                                        ClassIdToNameMap="ClassIdToNameMap"
                                        PCStatIdToNameMap="PCStatIdToNameMap"
@@ -81,7 +83,7 @@
             </div>
         }
 
-        @if (!ViewOptions.Shrink && ViewOptions.PetDescription && (AccountData?.Pets?.Any() == true))
+        @if (!VO.Shrink && VO.PetDescription && (AccountData?.Pets?.Any() == true))
         {
             <div class="pets" style="--char-row-length: @_effectiveCharRowLength;">
                 @foreach (var pet in AccountData.Pets.OrderByDescending(p => p.Rarity).ThenByDescending(p => p.MaxAbilityPower))
@@ -92,58 +94,58 @@
         }
 
 
-        @if (!ViewOptions.Shrink && ViewOptions.Vaults && AccountData?.Vault?.Items?.Any() == true)
+        @if (!VO.Shrink && VO.Vaults && AccountData?.Vault?.Items?.Any() == true)
         {
             <ItemContainer Items="AccountData.Vault.Items" 
-                          DisplayType="@GetDisplayType(nameof(ViewOptions.VaultsDisplayType))"
+                          DisplayType="@GetDisplayType(nameof(VO.VaultsDisplayType))"
                           class="vaults" 
                           style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
 
-        @if (!ViewOptions.Shrink && ViewOptions.Potions && AccountData?.Potions?.Any() == true)
+        @if (!VO.Shrink && VO.Potions && AccountData?.Potions?.Any() == true)
         {
             <ItemContainer Items="AccountData.Potions" 
-                          DisplayType="@GetDisplayType(nameof(ViewOptions.PotionsDisplayType))"
+                          DisplayType="@GetDisplayType(nameof(VO.PotionsDisplayType))"
                           class="potions" 
                           style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
 
-        @if (!ViewOptions.Shrink && ViewOptions.Materials && AccountData?.MaterialStorage?.Items?.Any() == true)
+        @if (!VO.Shrink && VO.Materials && AccountData?.MaterialStorage?.Items?.Any() == true)
         {
             <ItemContainer Items="AccountData.MaterialStorage.Items" 
-                          DisplayType="@GetDisplayType(nameof(ViewOptions.MaterialsDisplayType))"
+                          DisplayType="@GetDisplayType(nameof(VO.MaterialsDisplayType))"
                           class="materials" 
                           style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
 
-        @if (!ViewOptions.Shrink && ViewOptions.Spoils && AccountData?.TemporaryGifts?.Any() == true)
+        @if (!VO.Shrink && VO.Spoils && AccountData?.TemporaryGifts?.Any() == true)
         {
             <ItemContainer Items="AccountData.TemporaryGifts" 
-                          DisplayType="@GetDisplayType(nameof(ViewOptions.SpoilsDisplayType))"
+                          DisplayType="@GetDisplayType(nameof(VO.SpoilsDisplayType))"
                           class="spoils" 
                           style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
 
-        @if (!ViewOptions.Shrink && ViewOptions.Gifts && AccountData?.Gifts?.Any() == true)
+        @if (!VO.Shrink && VO.Gifts && AccountData?.Gifts?.Any() == true)
         {
             <ItemContainer Items="AccountData.Gifts" 
-                          DisplayType="@GetDisplayType(nameof(ViewOptions.GiftsDisplayType))"
+                          DisplayType="@GetDisplayType(nameof(VO.GiftsDisplayType))"
                           class="gifts" 
                           style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
 
-        @if (!ViewOptions.Shrink && ViewOptions.PetInventory && AccountData?.SeasonalPetInventory?.Items?.Any() == true)
+        @if (!VO.Shrink && VO.PetInventory && AccountData?.SeasonalPetInventory?.Items?.Any() == true)
         {
             <ItemContainer Items="AccountData.SeasonalPetInventory.Items" 
-                          DisplayType="@GetDisplayType(nameof(ViewOptions.PetInventoryDisplayType))"
+                          DisplayType="@GetDisplayType(nameof(VO.PetInventoryDisplayType))"
                           class="petinv" 
                           style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
 
-        @if (!ViewOptions.Shrink && ViewOptions.PetInventory && AccountData?.NonSeasonalPetInventory?.Items?.Any() == true)
+        @if (!VO.Shrink && VO.PetInventory && AccountData?.NonSeasonalPetInventory?.Items?.Any() == true)
         {
             <ItemContainer Items="AccountData.NonSeasonalPetInventory.Items" 
-                          DisplayType="@GetDisplayType(nameof(ViewOptions.PetInventoryDisplayType))"
+                          DisplayType="@GetDisplayType(nameof(VO.PetInventoryDisplayType))"
                           class="petinv" 
                           style="@($"--char-row-length: {_effectiveCharRowLength};")" />
         }
@@ -159,7 +161,7 @@
     public MDTadusMod.Data.AccountData AccountData { get; set; }
 
     [Parameter]
-    public AccountViewOptions ViewOptions { get; set; }
+    public AccountViewOptions VO { get; set; }
 
     [Parameter]
     public string Status { get; set; }
@@ -194,12 +196,12 @@
     {
         _dotNetObjectReference = DotNetObjectReference.Create(this);
         // Fallback if the parameter is not provided
-        if (ViewOptions == null)
+        if (VO == null)
         {
-            ViewOptions = SettingsManager.GlobalOptions;
+            VO = SettingsManager.GlobalOptions;
         }
         // Set initial value from settings to prevent starting at 1
-        _effectiveCharRowLength = ViewOptions.CharRowLength;
+        _effectiveCharRowLength = VO.CharRowLength;
         SettingsManager.OnChange += HandleSettingsChanged;
         MaxStatsPerClass = await AssetService.GetMaxStatsPerClass();
     }
@@ -207,7 +209,7 @@
     private ContainerDisplayType GetDisplayType(string containerPropertyName)
     {
         // Special case: Potions behavior
-        if (containerPropertyName == nameof(ViewOptions.PotionsDisplayType))
+        if (containerPropertyName == nameof(VO.PotionsDisplayType))
         {
             // If global setting is OFF, always use Summarized for Spoils
             if (!SettingsManager.GlobalSettings.ShowExtendedItemContainerDisplay)
@@ -219,7 +221,7 @@
             
             // If global setting is ON, check the actual value
             var property = typeof(AccountViewOptions).GetProperty(containerPropertyName);
-            if (property != null && property.GetValue(ViewOptions) is ContainerDisplayType displayType)
+            if (property != null && property.GetValue(VO) is ContainerDisplayType displayType)
             {
                 Debug.WriteLine($"[GetDisplayType] Spoils: Global setting is ON, returning {displayType}");
                 return displayType;
@@ -233,7 +235,7 @@
             return ContainerDisplayType.chest;
 
         var prop = typeof(AccountViewOptions).GetProperty(containerPropertyName);
-        if (prop != null && prop.GetValue(ViewOptions) is ContainerDisplayType type)
+        if (prop != null && prop.GetValue(VO) is ContainerDisplayType type)
         {
             return type;
         }
@@ -325,12 +327,12 @@
     [JSInvokable]
     public void OnElementResized(double bodyWidth)
     {
-        if (ViewOptions == null) return;
+        if (VO == null) return;
 
         var somethingChanged = false;
 
         // --- Character Row Calculation ---
-        if (ViewOptions.Characters && bodyWidth > 0)
+        if (VO.Characters && bodyWidth > 0)
         {
             int newEffectiveLength;
 
@@ -343,7 +345,7 @@
 
                 var effectiveWidth = bodyWidth - safetyMargin;
                 var maxFit = Math.Floor((effectiveWidth + gap) / (cardWidth + gap));
-                var newLength = Math.Min(ViewOptions.CharRowLength, (int)maxFit);
+                var newLength = Math.Min(VO.CharRowLength, (int)maxFit);
                 newLength = Math.Min(newLength, AccountData.Characters.Count);
                 newEffectiveLength = Math.Max(1, newLength);
             }

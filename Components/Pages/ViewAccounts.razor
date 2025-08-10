@@ -27,7 +27,7 @@ else
         {
             <AccountCard Account="@account"
                          AccountData="@(accountDataMap.GetValueOrDefault(account.Id))"
-                         ViewOptions="@SettingsManager.GlobalOptions"
+                         VO="@SettingsManager.GlobalOptions"
                          Status="@(refreshStatus.ContainsKey(account.Id) ? refreshStatus[account.Id] : "Idle")"
                          IsRefreshing="@(isRefreshing.Contains(account.Id))"
                          OnRefreshClicked="@(() => RefreshAccountData(account))"
