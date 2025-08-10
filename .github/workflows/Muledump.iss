@@ -53,7 +53,7 @@ Root: HKCU; Subkey: "Software\{#MyAppName}"; ValueType: string; ValueName: "Data
 [Code]
 var
   DataDirPage: TInputDirWizardPage;
-  RemoveDataCheckBox: TNewCheckBox;
+  RemoveUserData: Boolean;
 
 function GetChosenDataDir(Param: string): string;
 begin
@@ -82,7 +82,7 @@ end;
 
 function ShouldRemoveData: Boolean;
 begin
-  Result := (Assigned(RemoveDataCheckBox) and RemoveDataCheckBox.Checked);
+  Result := RemoveUserData;
 end;
 
 procedure SaveInstallerHash;
@@ -116,21 +116,14 @@ begin
     DataDirPage.Values[0] := ExpandConstant('{userappdata}\{#MyAppName}');
 end;
 
-procedure InitializeUninstall;
+function InitializeUninstall(): Boolean;
 var
-  L, T, W: Integer;
+  R: Integer;
 begin
-  RemoveDataCheckBox := TNewCheckBox.Create(WizardForm);
-  RemoveDataCheckBox.Parent := WizardForm;
-
-  RemoveDataCheckBox.Caption := 'Remove all user data and settings';
-  RemoveDataCheckBox.Checked := False;
-
-  { Place with simple margins; avoid referencing non-existent labels }
-  L := ScaleX(16);
-  T := ScaleY(110);  { adjust if you want it higher/lower }
-  W := WizardForm.ClientWidth - ScaleX(32);
-  RemoveDataCheckBox.SetBounds(L, T, W, RemoveDataCheckBox.Height);
+  // Ask once at uninstall start; store choice for [UninstallDelete] check
+  R := MsgBox('Do you also want to remove all user data and settings?', mbConfirmation, MB_YESNO or MB_DEFBUTTON2);
+  RemoveUserData := (R = IDYES);
+  Result := True; // continue with uninstall
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
