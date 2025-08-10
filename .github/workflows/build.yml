@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout Muledump.NET repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Checkout RotMGAssetExtractor (temp)
         uses: actions/checkout@v4
@@ -58,6 +60,12 @@ jobs:
           }
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .github\workflows\Muledump.iss /DMyAppVersion=$v
 
+      - name: Create SHA256 for installer
+        shell: pwsh
+        run: |
+          $f = "installer/Muledump.NET-setup-windows-x64.exe"
+          (Get-FileHash -Algorithm SHA256 $f).Hash | Out-File "$f.sha256" -Encoding ascii
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -65,6 +73,7 @@ jobs:
           path: |
             Muledump.NET-portable-windows-x64.zip
             installer/Muledump.NET-setup-windows-x64.exe
+            installer/Muledump.NET-setup-windows-x64.exe.sha256
 
       - name: Upload assets to the "latest" release (always)
         uses: softprops/action-gh-release@v2
@@ -74,6 +83,7 @@ jobs:
           files: |
             Muledump.NET-portable-windows-x64.zip
             installer/Muledump.NET-setup-windows-x64.exe
+            installer/Muledump.NET-setup-windows-x64.exe.sha256
           make_latest: true
           token: ${{ secrets.GITHUB_TOKEN }}
           skip_if_release_exists: false

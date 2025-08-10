@@ -1,0 +1,45 @@
+@inject MDTadusMod.Services.UpdaterService Updater
+
+@if (showUpdate)
+{
+    <button class="btn btn-sm btn-warning ms-2" @onclick="DoUpdate" disabled="@busy" title="Download and install update">
+        @if (busy) { <span>Updating…</span> } else { <span>Update available</span> }
+    </button>
+}
+
+@code {
+    private bool showUpdate = false;
+    private bool busy = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        // Ask once on first render
+        var info = await Updater.CheckAsync();
+        showUpdate = info is not null;
+        StateHasChanged();
+    }
+
+    private async Task DoUpdate()
+    {
+        if (busy) return;
+        busy = true;
+        StateHasChanged();
+
+        var info = await Updater.CheckAsync();
+        if (info is null) { showUpdate = false; busy = false; StateHasChanged(); return; }
+
+        var path = await Updater.DownloadInstallerAsync(info.DownloadUrl);
+        if (path is not null)
+        {
+            // This will quit the app after starting the installer
+            Updater.RunInstallerAndExit(path, info.RemoteHash);
+        }
+        else
+        {
+            busy = false; // download failed; stay on
+            StateHasChanged();
+        }
+    }
+}

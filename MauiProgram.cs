@@ -75,6 +75,7 @@ namespace MDTadusMod
             builder.Services.AddSingleton<RotmgApiService>();
             builder.Services.AddSingleton<AssetService>();
             builder.Services.AddSingleton<SettingsService>();
+            builder.Services.AddSingleton<UpdaterService>();
             builder.Services.AddHttpClient();
 
             return builder.Build();

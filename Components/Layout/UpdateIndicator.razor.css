@@ -1,0 +1,17 @@
+﻿button {
+    display: inline-block;
+    cursor: pointer;
+    height: 23px;
+    box-shadow: rgb(17, 17, 17) 2px 2px 8px;
+    letter-spacing: 0.02em;
+    margin-left: 4px;
+    position: relative;
+    user-select: none;
+    background: rgb(66, 66, 66);
+    border-width: initial;
+    border-style: none;
+    border-color: initial;
+    border-image: initial;
+    font-size: 14px;
+    color: #ccc;
+}

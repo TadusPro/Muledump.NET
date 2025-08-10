@@ -21,9 +21,10 @@ SolidCompression=yes
 UsePreviousAppDir=yes
 DirExistsWarning=no
 CloseApplications=yes
-RestartApplications=no
+RestartApplications=yes
 UninstallDisplayIcon={app}\{#MyAppExe}
 UninstallDisplayName={#MyAppName}
+SetupLogging=yes
 
 [Files]
 Source: "..\..\publish\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion replacesameversion
