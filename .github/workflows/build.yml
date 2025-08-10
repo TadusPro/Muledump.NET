@@ -46,18 +46,33 @@ jobs:
         shell: pwsh
         run: Compress-Archive -Path "publish/*" -DestinationPath "Muledump.NET-win-x64.zip"
 
-      - name: Upload build artifact
+      - name: Install & build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup -y
+          if ("${{ github.ref }}".StartsWith("refs/tags/v")) {
+            $v = "${{ github.ref_name }}".TrimStart('v')
+          } else {
+            $v = "0.0.${{ github.run_number }}"
+          }
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .github\workflows\Muledump.iss /DMyAppVersion=$v
+
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Muledump.NET-build
-          path: Muledump.NET-win-x64.zip
+          path: |
+            Muledump.NET-win-x64.zip
+            installer/Muledump.NET-Setup.exe
 
-      - name: Upload asset to the "latest" release (always)
+      - name: Upload assets to the "latest" release (always)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest                 # single rolling release
+          tag_name: latest
           name: Latest
-          files: Muledump.NET-win-x64.zip
+          files: |
+            Muledump.NET-win-x64.zip
+            installer/Muledump.NET-Setup.exe
           make_latest: true
           token: ${{ secrets.GITHUB_TOKEN }}
           skip_if_release_exists: false
