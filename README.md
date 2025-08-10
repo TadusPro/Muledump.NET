@@ -4,27 +4,29 @@ This tool is an items and stat focused account manager for the game RotMG. It is
 
 ## Features
 
-*   **Comprehensive Account Details**: View detailed stats for your characters and pets, along with all items across inventorycontainers.
+*   **Comprehensive Account Details**: View detailed stats for your characters and pets, along with all items across inventory containers.
 *   **Cross-Platform**: Runs on Windows, macOS, Android, and iOS.
 *   **Familiar UI**: A user interface designed to look and feel like the original Muledump, built with Blazor.
 *   **Asset Extraction**: Utilizes `RotMGAssetExtractor` to extract all necessary game data directly, eliminating the need for third-party tools or resources that old MD relied on.
 
-## Tech Stack
+## Installation
+
+1.  Navigate to the [**Releases**](https://github.com/TadusPro/MDTadusMod/releases) page.
+2.  Download the latest version for your operating system. You will find two options:
+    *   **Installer**: Guides you through a standard installation process and includes an auto-updater to keep the application current.
+    *   **Portable**: A `.zip` file that you can extract and run anywhere without installation.
+3.  Run the application.
+
+## For Developers
+
+If you want to contribute to the project or build it from source, follow these instructions.
+
+### Tech Stack
 
 *   **.NET 8**
 *   **.NET MAUI**
 *   **Blazor Hybrid**
 *   **C#**
-
-## Project Structure
-
-The solution includes two primary projects:
-*   **MDTadusMod**: The main .NET MAUI application.
-*   **[RotMGAssetExtractor](https://github.com/TadusPro/RotMGAssetExtractor)**: A class library responsible for extracting game assets. `MDTadusMod` includes a project reference to `RotMGAssetExtractor`. When you open the solution in Visual Studio, this reference should be automatically resolved.
-
-## Getting Started
-
-Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
 
 ### Prerequisites
 
@@ -35,7 +37,7 @@ Follow these instructions to get a copy of the project up and running on your lo
     ```
 *   Visual Studio 2022 with the .NET Multi-platform App UI development workload installed.
 
-### Installation
+### Setup
 
 1.  Clone the repository:
     ```shell
@@ -43,11 +45,17 @@ Follow these instructions to get a copy of the project up and running on your lo
     ```
 2.  Open the solution file (`.sln`) in Visual Studio 2022.
 
-## Building and Running
+### Building and Running
 
 1.  Set the startup project to `MDTadusMod`.
 2.  Select the target framework/platform (e.g., Windows Machine, Android Emulator, or a physical device).
 3.  Press F5 or click the "Start" button to build and run the application.
+
+### Project Structure
+
+The solution includes two primary projects:
+*   **MDTadusMod**: The main .NET MAUI application.
+*   **[RotMGAssetExtractor](https://github.com/TadusPro/RotMGAssetExtractor)**: A class library responsible for extracting game assets. `MDTadusMod` includes a project reference to `RotMGAssetExtractor`. When you open the solution in Visual Studio, this reference should be automatically resolved.
 
 ### Publishing
 
