@@ -42,6 +42,9 @@ jobs:
           dotnet publish -c Release -f net8.0-windows10.0.19041.0 -r win-x64 `
             -p:WindowsPackageType=None -p:PublishReadyToRun=false -o publish
 
+      - name: Download WebView2 runtime (Evergreen bootstrapper)
+        run: curl -L "https://go.microsoft.com/fwlink/p/?LinkId=2124703" -o publish\MicrosoftEdgeWebview2Setup.exe
+
       - name: Zip output
         shell: pwsh
         run: Compress-Archive -Path "publish/*" -DestinationPath "Muledump.NET-win-x64.zip"
