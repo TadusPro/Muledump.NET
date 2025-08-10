@@ -55,7 +55,6 @@ var
   DataDirPage: TInputDirWizardPage;
   RemoveDataCheckBox: TNewCheckBox;
 
-// Helper function to get the user-selected or default data directory
 function GetChosenDataDir(Param: string): string;
 begin
   if Assigned(DataDirPage) then
@@ -64,20 +63,16 @@ begin
     Result := ExpandConstant('{userappdata}\{#MyAppName}');
 end;
 
-// Helper function to get the data directory of an existing installation
 function GetInstalledDataDir(Param: string): string;
 var
   DataDir: string;
 begin
-  // Read the stored data directory path from the registry
   if RegQueryStringValue(HKCU, 'Software\' + '{#MyAppName}', 'DataDir', DataDir) then
     Result := DataDir
   else
-    // Fallback to the default if registry key not found
     Result := ExpandConstant('{userappdata}\{#MyAppName}');
 end;
 
-// Helper function to check if the WebView2 runtime is present
 function WebView2Present: Boolean;
 begin
   Result :=
@@ -85,28 +80,24 @@ begin
     DirExists(ExpandConstant('{localappdata}\Microsoft\EdgeWebView\Application'));
 end;
 
-// Helper function to determine if user data should be removed during uninstall
 function ShouldRemoveData: Boolean;
 begin
   Result := (Assigned(RemoveDataCheckBox) and RemoveDataCheckBox.Checked);
 end;
 
-// Saves the installer's hash to a file in the data directory
 procedure SaveInstallerHash;
 var
-  Hash: String;
-  Path: String;
+  Hash, Pth: String;
 begin
   Hash := '{#InstallerHash}';
   if Trim(Hash) <> '' then
   begin
-    Path := ExpandConstant(GetChosenDataDir('') + '\Updates\last_installer.sha256');
-    ForceDirectories(ExtractFilePath(Path));
-    SaveStringToFile(Path, Hash, False);
+    Pth := ExpandConstant(GetChosenDataDir('') + '\Updates\last_installer.sha256');
+    ForceDirectories(ExtractFilePath(Pth));
+    SaveStringToFile(Pth, Hash, False);
   end;
 end;
 
-// Runs when the installer wizard is initialized
 procedure InitializeWizard;
 var
   PrevData: String;
@@ -119,30 +110,29 @@ begin
     False, 'Muledump.NET');
   DataDirPage.Add('Data folder:');
 
-  // Prefill with previous choice if present
   if RegQueryStringValue(HKCU, 'Software\' + '{#MyAppName}', 'DataDir', PrevData) and (PrevData <> '') then
     DataDirPage.Values[0] := PrevData
   else
     DataDirPage.Values[0] := ExpandConstant('{userappdata}\{#MyAppName}');
 end;
 
-// Runs when the uninstaller is initialized
 procedure InitializeUninstall;
 var
-  TopPosition: Integer;
+  L, T, W: Integer;
 begin
-  // Create a checkbox on the uninstaller confirmation page
   RemoveDataCheckBox := TNewCheckBox.Create(WizardForm);
   RemoveDataCheckBox.Parent := WizardForm;
+
   RemoveDataCheckBox.Caption := 'Remove all user data and settings';
   RemoveDataCheckBox.Checked := False;
 
-  // Position the checkbox below the confirmation label
-  TopPosition := WizardForm.ConfirmLabel.Top + WizardForm.ConfirmLabel.Height + 8;
-  RemoveDataCheckBox.SetBounds(WizardForm.ConfirmLabel.Left, TopPosition, WizardForm.ConfirmLabel.Width, RemoveDataCheckBox.Height);
+  { Place with simple margins; avoid referencing non-existent labels }
+  L := ScaleX(16);
+  T := ScaleY(110);  { adjust if you want it higher/lower }
+  W := WizardForm.ClientWidth - ScaleX(32);
+  RemoveDataCheckBox.SetBounds(L, T, W, RemoveDataCheckBox.Height);
 end;
 
-// Runs when the installer moves to a new step
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   D: string;
