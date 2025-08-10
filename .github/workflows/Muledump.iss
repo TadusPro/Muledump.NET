@@ -7,26 +7,20 @@
 #endif
 
 [Setup]
-AppName={#MyAppName}
-AppVersion={#MyAppVersion}
-AppPublisher=Muledump
-DefaultDirName={autopf}\{#MyAppName}
-DefaultGroupName={#MyAppName}
-OutputDir=..\..\installer
-OutputBaseFilename={#MyAppName}-Setup
-Compression=lzma
-SolidCompression=yes
+; ensure x64 install location
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
 
 [Files]
 ; Package everything produced by dotnet publish
 Source: "..\..\publish\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion replacesameversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
-Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon
+Name: "{group}\Muledump.NET"; Filename: "{app}\Muledump.NET.exe"; WorkingDir: "{app}"
+Name: "{userdesktop}\Muledump.NET"; Filename: "{app}\Muledump.NET.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional icons:"; Flags: unchecked
 
 [Run]
-Filename: "{app}\\{#MyAppExe}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Muledump.NET.exe"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
