@@ -17,6 +17,10 @@ namespace MDTadusMod.Services
 
         public RotmgApiService(HttpClient httpClient) => _httpClient = httpClient;
 
+        private static bool IsLockout(string s) =>
+            !string.IsNullOrEmpty(s) &&
+            s.IndexOf("LOGIN ATTEMPT LIMIT REACHED", StringComparison.OrdinalIgnoreCase) >= 0;
+
         public async Task<AccountData> GetAccountDataAsync(Account account, AccountData existingAccountData = null)
         {
             var sb = new StringBuilder();
@@ -38,8 +42,13 @@ namespace MDTadusMod.Services
 
             if (string.IsNullOrEmpty(accessToken))
             {
-                sb.AppendLine($"Token verification failed: {newAccountData.LastErrorMessage}");
-                Debug.WriteLine(sb.ToString());
+                if (IsLockout(newAccountData.LastErrorMessage))
+                {
+                    Debug.WriteLine($"Lockout detected in token step for {account.Email}: {newAccountData.LastErrorMessage}");
+                    throw new LoginLockoutException(newAccountData.LastErrorMessage);
+                }
+                // unchanged return:
+                Debug.WriteLine($"Token verification failed: {newAccountData.LastErrorMessage}");
                 return existingAccountData ?? newAccountData;
             }
             sb.AppendLine("Successfully obtained access token.");
@@ -412,40 +421,54 @@ namespace MDTadusMod.Services
             var response = await _httpClient.PostAsync(uriBuilder.ToString(), content);
             var responseString = await response.Content.ReadAsStringAsync();
 
+            // Add more detailed logging
+            Debug.WriteLine($"Verify response for {account.Email}: Status={response.StatusCode}, Content={responseString}");
+
             try
             {
                 var xml = XDocument.Parse(responseString);
-                if (xml.Root?.Name == "Error" && xml.Root.Value == "WebChangePasswordDialog.passwordError")
+                if (xml.Root?.Name == "Error")
                 {
-                    accountData.PasswordError = true;
-                    accountData.LastErrorMessage = "Password error";
-
-                    return null;
+                    var errorValue = xml.Root.Value;
+                    if (errorValue == "WebChangePasswordDialog.passwordError")
+                    {
+                        accountData.PasswordError = true;
+                        accountData.LastErrorMessage = "Password error";
+                        return null;
+                    }
+                    else
+                    {
+                        // Log the actual error
+                        accountData.LastErrorMessage = string.IsNullOrWhiteSpace(errorValue) 
+                            ? $"Empty error response (Status: {response.StatusCode})" 
+                            : errorValue;
+                        Debug.WriteLine($"API Error for {account.Email}: {accountData.LastErrorMessage}");
+                        return null;
+                    }
                 }
-                else if(xml.Root?.Name == "Error")
-                {
-                    accountData.LastErrorMessage = xml.Root.Value;
 
-                }
-
-                if (response.IsSuccessStatusCode)
+                if (response.IsSuccessStatusCode && xml.Root?.Element("AccessToken") != null)
                 {
                     accountData.LastErrorMessage = "";
-                    return xml.Root?.Element("AccessToken")?.Value;
+                    return xml.Root.Element("AccessToken").Value;
                 }
             }
-            catch (System.Xml.XmlException)
+            catch (System.Xml.XmlException ex)
             {
-                // Response was not valid XML, proceed to throw general exception
+                // Response was not valid XML
+                Debug.WriteLine($"XML parse error for {account.Email}: {ex.Message}");
+                Debug.WriteLine($"Response content: {responseString}");
+                accountData.LastErrorMessage = $"Invalid XML response: {ex.Message}";
             }
 
             // If we've reached here, the request failed for a non-specific reason.
             if (!response.IsSuccessStatusCode)
             {
-                 throw new Exception($"Verification failed: {response.ReasonPhrase} - {responseString}");
+                accountData.LastErrorMessage = $"HTTP {response.StatusCode}: {response.ReasonPhrase}";
+                throw new Exception($"Verification failed: {response.ReasonPhrase} - {responseString}");
             }
 
-            return null; // Should not be reached, but covers all paths
+            return null;
         }
 
     }

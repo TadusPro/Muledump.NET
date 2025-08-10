@@ -11,6 +11,8 @@ namespace MDTadusMod.Services
         private readonly string _basePath;
         private readonly string _accountsFilePath;
         private readonly string _accountDataPath;
+        private readonly SemaphoreSlim _accountsFileSemaphore = new(1, 1); // Separate semaphore for accounts.xml
+        private readonly SemaphoreSlim _accountDataSemaphore = new(1, 1); // Separate semaphore for account data files
 
         public AccountService(IAppPaths paths)
         {
@@ -27,11 +29,13 @@ namespace MDTadusMod.Services
             if (!File.Exists(_accountsFilePath))
                 return new List<Account>();
 
+            await _accountsFileSemaphore.WaitAsync(); // Lock for reading
             try
             {
                 var ser = new XmlSerializer(typeof(List<Account>));
                 using var fs = File.OpenRead(_accountsFilePath);
                 var accounts = (List<Account>?)ser.Deserialize(fs) ?? new();
+                fs.Close(); // Explicitly close before potentially saving
 
                 bool touched = false;
                 foreach (var a in accounts)
@@ -42,8 +46,14 @@ namespace MDTadusMod.Services
                         touched = true;
                     }
                 }
+                
                 if (touched)
+                {
+                    // Release the read lock before saving
+                    _accountsFileSemaphore.Release();
                     await SaveAccountsAsync(accounts);
+                    return accounts;
+                }
 
                 return accounts;
             }
@@ -52,10 +62,17 @@ namespace MDTadusMod.Services
                 Debug.WriteLine($"[AccountService] Read accounts failed: {ex}");
                 return new List<Account>();
             }
+            finally
+            {
+                // Only release if we didn't already release above
+                if (_accountsFileSemaphore.CurrentCount == 0)
+                    _accountsFileSemaphore.Release();
+            }
         }
 
         public async Task SaveAccountsAsync(List<Account> accounts)
         {
+            await _accountsFileSemaphore.WaitAsync();
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(_accountsFilePath)!);
@@ -67,6 +84,10 @@ namespace MDTadusMod.Services
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AccountService] Save accounts failed: {ex}");
+            }
+            finally
+            {
+                _accountsFileSemaphore.Release();
             }
         }
 
@@ -98,6 +119,7 @@ namespace MDTadusMod.Services
 
         public async Task SaveAccountDataAsync(AccountData data)
         {
+            await _accountDataSemaphore.WaitAsync();
             var filePath = Path.Combine(_accountDataPath, $"{data.AccountId}.xml");
             try
             {
@@ -110,6 +132,10 @@ namespace MDTadusMod.Services
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AccountService] SaveAccountData failed for {data.AccountId}: {ex}");
+            }
+            finally
+            {
+                _accountDataSemaphore.Release();
             }
         }
 

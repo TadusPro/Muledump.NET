@@ -76,7 +76,11 @@ namespace MDTadusMod
             builder.Services.AddSingleton<AssetService>();
             builder.Services.AddSingleton<SettingsService>();
             builder.Services.AddSingleton<UpdaterService>();
+            builder.Services.AddSingleton<ReloadQueueService>();
             builder.Services.AddHttpClient();
+
+            // Add logging configuration
+            builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
 
             return builder.Build();
         }

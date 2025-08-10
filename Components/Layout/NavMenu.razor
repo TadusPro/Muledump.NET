@@ -1,5 +1,7 @@
 ﻿@using MDTadusMod.Components.Shared
+@using MDTadusMod.Services
 @inject NavigationManager NavigationManager
+@inject ReloadQueueService ReloadQueue
 @implements IDisposable
 
 <nav class="flex-column">
@@ -28,11 +30,7 @@
         else
         {
             <OptionsMenu />
-            <div class="nav-item">
-                <NavLink class="nav-link">
-                    Reload
-                </NavLink>
-            </div>
+            <ReloadButton />
             <div class="nav-item">
                 <NavLink class="nav-link" href="settings">
                     Settings

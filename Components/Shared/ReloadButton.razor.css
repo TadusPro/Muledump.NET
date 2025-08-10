@@ -1,0 +1,131 @@
+﻿/* DEBUGGING MODE - Uncomment to keep dropdown visible   
+.reload-menu:hover .reload-dropdown, .reload-dropdown {
+    display: block !important;
+    visibility: visible !important;
+}  */
+
+
+span {
+    color: #CCC;
+}
+/* nav button */
+.nav-item {
+    display: inline-block;
+    cursor: pointer;
+    padding: 3px 8px 0;
+    height: 20px;
+    background: #424242;
+    box-shadow: 2px 2px 8px #111;
+    border: none;
+    letter-spacing: .02em;
+    margin-left: 4px;
+    position: relative;
+    user-select: none;
+}
+.reload-menu {
+    position: relative;
+}
+
+.reload-menu > span {
+    cursor: pointer;
+    user-select: none;
+}
+
+.reload-menu > span:hover {
+    text-decoration: underline;
+}
+
+.reload-dropdown {
+    visibility: hidden;
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: 6px;
+    z-index: 1000;
+    width: 200px;
+    text-align: left;
+    font: 15px/1 sans-serif;
+    color: #b3b3b3;
+    background: #2c2c2c;
+    box-shadow: 0 0 1px 4px #111;
+    border: none;
+    transition: visibility .5s ease-out;
+}
+
+.reload-menu:hover .reload-dropdown {
+    visibility: visible;
+}
+
+.reload-status {
+    font-size: 0.9em;
+}
+
+.status-item {
+    height: 26px;
+    font-size: 15px;
+    overflow: hidden;
+    color: #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: left;
+    margin-left: 10px;
+}
+
+.status-item:last-child {
+    margin-bottom: 0;
+}
+
+.reload-all-button {
+    background-color: transparent;
+    color: #ccc;
+    border: solid;
+    border-width: 1px;
+    border-color: black;
+    padding: 6px 16px;
+    cursor: pointer;
+    font-size: 0.85em;
+    width: 100%;
+}
+
+.reload-all-button:hover:not(:disabled) {
+}
+
+.reload-all-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.cancel-button {
+    background-color: transparent;
+    border: solid;
+    border-width: 1px;
+    border-color: black;
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.85em;
+    width: 100%;
+}
+
+.cancel-button:hover {
+}
+
+.last-status {
+    font-size: 0.8em;
+    color: #999;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #333;
+}
+
+.reloading {
+    background-color: #2b8211;
+    color: #fff;
+}
+
+.rate-limited {
+    background-color: #82120c;
+    color: #fff;
+}

@@ -2,6 +2,7 @@
 @page "/view-accounts"
 @inject Services.AccountService AccountSvc
 @inject Services.RotmgApiService RotmgApiSvc
+@inject Services.ReloadQueueService ReloadQueue
 @inject NavigationManager NavManager
 @inject Services.SettingsService SettingsManager
 @implements IDisposable
@@ -44,7 +45,13 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        SettingsManager.OnChange += StateHasChanged; // Subscribe to changes
+        SettingsManager.OnChange += StateHasChanged;
+        
+        // Subscribe to ReloadQueue events
+        ReloadQueue.OnAccountDataUpdated += OnAccountDataUpdated;
+        ReloadQueue.OnAccountStatusChanged += OnAccountStatusChanged;
+        ReloadQueue.OnQueueChanged += OnQueueChanged;
+        
         accounts = await AccountSvc.GetAccountsAsync();
         if (accounts != null)
         {
@@ -75,42 +82,46 @@ else
         if (isRefreshing.Contains(account.Id)) return;
 
         isRefreshing.Add(account.Id);
-        refreshStatus[account.Id] = "Refreshing...";
         StateHasChanged();
 
-        try
+        // Queue the account reload - let ReloadQueueService handle everything
+        ReloadQueue.QueueAccount(account.Id, account.Email, async () =>
         {
-            // Get the existing data to pass to the service.
             var existingData = accountDataMap.GetValueOrDefault(account.Id);
             var accountData = await RotmgApiSvc.GetAccountDataAsync(account, existingData);
-            
             await AccountSvc.SaveAccountDataAsync(accountData);
-            accountDataMap[account.Id] = accountData; // Update the map with the result.
+            return accountData;
+        });
+    }
 
-            if (accountData.PasswordError)
-            {
-                refreshStatus[account.Id] = "Password Error";
-            }
-            else
-            {
-                refreshStatus[account.Id] = "Success";
-                System.Diagnostics.Debug.WriteLine($"Char List for {account.Email} processed.");
-            }
-        }
-        catch (Exception ex)
+    // Add these event handlers
+    private void OnAccountDataUpdated(Guid accountId, MDTadusMod.Data.AccountData accountData)
+    {
+        accountDataMap[accountId] = accountData;
+        isRefreshing.Remove(accountId);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnAccountStatusChanged(Guid accountId, string status)
+    {
+        refreshStatus[accountId] = status;
+        if (status == "Success" || status == "Error" || status == "Password Error")
         {
-            refreshStatus[account.Id] = "Error";
-            System.Diagnostics.Debug.WriteLine($"Error refreshing account {account.Email}: {ex.Message}");
+            isRefreshing.Remove(accountId);
         }
-        finally
-        {
-            isRefreshing.Remove(account.Id);
-            StateHasChanged();
-        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnQueueChanged()
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        SettingsManager.OnChange -= StateHasChanged; // Unsubscribe to prevent memory leaks
+        SettingsManager.OnChange -= StateHasChanged;
+        ReloadQueue.OnAccountDataUpdated -= OnAccountDataUpdated;
+        ReloadQueue.OnAccountStatusChanged -= OnAccountStatusChanged;
+        ReloadQueue.OnQueueChanged -= OnQueueChanged;
     }
 }

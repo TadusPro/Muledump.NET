@@ -3,7 +3,8 @@ function adjustDropdown(menuElement) {
         return;
     }
 
-    const dropdown = menuElement.querySelector('.options-dropdown');
+    // Look for either options-dropdown or reload-dropdown
+    const dropdown = menuElement.querySelector('.options-dropdown') || menuElement.querySelector('.reload-dropdown');
     if (!dropdown) {
         return;
     }

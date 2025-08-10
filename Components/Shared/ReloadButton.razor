@@ -1,0 +1,180 @@
+﻿@using MDTadusMod.Services
+@using MDTadusMod.Data
+@inject ReloadQueueService ReloadQueue
+@inject AccountService AccountService
+@inject RotmgApiService RotmgApiService
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<div class="nav-item reload-menu @ReloadButtonClass" @ref="reloadMenuElement" @onmouseenter="HandleMouseEnter">
+    <span @onclick="HandleReloadClick">Reload</span>
+    <div class="reload-dropdown">
+        <div class="reload-status">
+            <div class="status-item">
+                @if (isRateLimited && rateLimitEndTime.HasValue)
+                {
+                    var remaining = rateLimitEndTime.Value - DateTime.UtcNow;
+                    if (remaining.TotalSeconds > 0)
+                    {
+                        <text>Rate Limited — @FormatTimeRemaining(remaining)</text>
+                    }
+                    else
+                    {
+                        <text>Rate limit expired, resuming…</text>
+                    }
+                }
+                else if (ReloadQueue.IsProcessing)
+                {
+                    <text>@ReloadQueue.QueueCount Tasks Remaining</text>
+                }
+                else
+                {
+                    <text>0 Tasks Running</text>
+                }
+            </div>
+            <div class="status-item">
+                @if (ReloadQueue.IsProcessing)
+                {
+                    <button class="cancel-button" @onclick="CancelReload">Cancel</button>
+                }
+                else
+                {
+                    <button class="reload-all-button" @onclick="ReloadAll" disabled="@isRateLimited">Reload Accounts</button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ElementReference reloadMenuElement;
+    private string currentStatus = "";
+    private string lastStatus = "";
+    private bool isRateLimited = false;
+    private DateTime? rateLimitEndTime = null;
+    private Timer? countdownTimer;
+
+    private string ReloadButtonClass =>
+        isRateLimited ? "rate-limited" :
+        ReloadQueue.IsProcessing ? "reloading" :
+        "";
+
+    protected override void OnInitialized()
+    {
+        ReloadQueue.OnQueueChanged += OnQueueChanged;
+        ReloadQueue.OnStatusChanged += OnStatusChanged;
+
+        // NEW: listen to service lockout signal (raised on pause & on resume)
+        ReloadQueue.OnLockoutUntilChanged += OnLockoutUntilChanged;
+    }
+
+    private void OnLockoutUntilChanged(DateTime? untilUtc)
+    {
+        isRateLimited = untilUtc.HasValue && DateTime.UtcNow < untilUtc.Value;
+        rateLimitEndTime = untilUtc;
+
+        if (isRateLimited) StartCountdownTimer();
+        else
+        {
+            countdownTimer?.Dispose();
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleMouseEnter()
+    {
+        await Task.Delay(1);
+        await JSRuntime.InvokeVoidAsync("adjustDropdown", reloadMenuElement);
+    }
+
+    private async Task HandleReloadClick()
+    {
+        if (!ReloadQueue.IsProcessing && !isRateLimited)
+            await ReloadAll();
+    }
+
+    private async Task ReloadAll() => await StartReloadProcess();
+
+    private async Task StartReloadProcess()
+    {
+        var accounts = await AccountService.GetAccountsAsync();
+
+        if (accounts != null && accounts.Any())
+        {
+            var reloadTasks = accounts.Select(account =>
+                (account.Id,
+                 account.Email ?? account.Id.ToString(),
+                 (Func<Task<AccountData>>)(async () =>
+                 {
+                     var existingData = await AccountService.GetAccountDataAsync(account.Id);
+                     var accountData = await RotmgApiService.GetAccountDataAsync(account, existingData);
+                     await AccountService.SaveAccountDataAsync(accountData);
+                     return accountData;
+                 })));
+
+            ReloadQueue.QueueAllAccounts(reloadTasks);
+        }
+        else
+        {
+            currentStatus = "No accounts to reload";
+            lastStatus = currentStatus;
+            StateHasChanged();
+        }
+    }
+
+    private void CancelReload()
+    {
+        ReloadQueue.CancelProcessing();
+        currentStatus = "Reload cancelled";
+        lastStatus = currentStatus;
+        isRateLimited = false;
+        rateLimitEndTime = null;
+        countdownTimer?.Dispose();
+        StateHasChanged();
+    }
+
+    private void OnQueueChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnStatusChanged(string status)
+    {
+        currentStatus = status;
+
+        // Remove brittle string-matching. Lockout state is driven by OnLockoutUntilChanged.
+
+        if (!ReloadQueue.IsProcessing)
+            lastStatus = status;
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void StartCountdownTimer()
+    {
+        countdownTimer?.Dispose();
+        countdownTimer = new Timer(_ =>
+        {
+            if (rateLimitEndTime.HasValue && DateTime.UtcNow >= rateLimitEndTime.Value)
+            {
+                isRateLimited = false;
+                rateLimitEndTime = null;
+                countdownTimer?.Dispose();
+            }
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
+    private string FormatTimeRemaining(TimeSpan remaining)
+    {
+        if (remaining.TotalMinutes >= 1)
+            return $"{(int)remaining.TotalMinutes}:{remaining.Seconds:D2} remaining";
+        return $"{(int)remaining.TotalSeconds} seconds remaining";
+    }
+
+    public void Dispose()
+    {
+        ReloadQueue.OnQueueChanged -= OnQueueChanged;
+        ReloadQueue.OnStatusChanged -= OnStatusChanged;
+        ReloadQueue.OnLockoutUntilChanged -= OnLockoutUntilChanged;
+        countdownTimer?.Dispose();
+    }
+}
