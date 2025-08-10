@@ -42,7 +42,7 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 
 [Run]
 Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "Installing WebView2 runtime..."; Check: not WebView2Present
-Filename: "{app}\{#MyAppExe}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExe}"; WorkingDir: "{app}"; Flags: nowait postinstall
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{code:GetInstalledDataDir}"; Check: ShouldRemoveData

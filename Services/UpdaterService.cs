@@ -98,12 +98,14 @@ namespace MDTadusMod.Services
 
         public void RunInstallerAndExit(string installerPath, string? newHash)
         {
-            var args = "/VERYSILENT /NORESTART /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /LOG";
-            Process.Start(new ProcessStartInfo { FileName = installerPath, Arguments = args, UseShellExecute = true, Verb = "runas" });
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = installerPath,
+                Arguments = "/VERYSILENT /NORESTART /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /LOG",
+                UseShellExecute = true,
+                Verb = "runas"
+            });
             if (!string.IsNullOrWhiteSpace(newHash)) SaveStoredHash(newHash!);
-#if WINDOWS
-            Microsoft.Maui.Controls.Application.Current?.Quit();
-#endif
         }
 
         static async Task<string> ComputeSHA256Async(Stream stream)
