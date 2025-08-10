@@ -6,6 +6,7 @@
 #endif
 
 [Setup]
+AppId={{8E2E4B6C-2A2C-4F7A-9C2F-7A1A7F1A3F11}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher=Muledump
@@ -17,6 +18,12 @@ OutputDir=..\..\installer
 OutputBaseFilename=Muledump.NET-setup-windows-x64
 Compression=lzma
 SolidCompression=yes
+UsePreviousAppDir=yes
+DirExistsWarning=no
+CloseApplications=yes
+RestartApplications=no
+UninstallDisplayIcon={app}\{#MyAppExe}
+UninstallDisplayName={#MyAppName}
 
 [Files]
 Source: "..\..\publish\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion replacesameversion
@@ -53,6 +60,8 @@ begin
 end;
 
 procedure InitializeWizard;
+var
+  PrevData: String;
 begin
   DataDirPage := CreateInputDirPage(
     wpSelectDir,
@@ -61,7 +70,12 @@ begin
     'Choose a writable folder. If unsure, keep the default.',
     False, 'Muledump.NET');
   DataDirPage.Add('Data folder:');
-  DataDirPage.Values[0] := ExpandConstant('{userappdata}\{#MyAppName}');
+
+  ; Prefill with previous choice if present
+  if RegQueryStringValue(HKCU, 'Software\' + '{#MyAppName}', 'DataDir', PrevData) and (PrevData <> '') then
+    DataDirPage.Values[0] := PrevData
+  else
+    DataDirPage.Values[0] := ExpandConstant('{userappdata}\{#MyAppName}');
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
