@@ -55,6 +55,43 @@ var
   DataDirPage: TInputDirWizardPage;
   RemoveDataCheckBox: TNewCheckBox;
 
+// Helper function to get the user-selected or default data directory
+function GetChosenDataDir(Param: string): string;
+begin
+  if Assigned(DataDirPage) then
+    Result := DataDirPage.Values[0]
+  else
+    Result := ExpandConstant('{userappdata}\{#MyAppName}');
+end;
+
+// Helper function to get the data directory of an existing installation
+function GetInstalledDataDir(Param: string): string;
+var
+  DataDir: string;
+begin
+  // Read the stored data directory path from the registry
+  if RegQueryStringValue(HKCU, 'Software\' + '{#MyAppName}', 'DataDir', DataDir) then
+    Result := DataDir
+  else
+    // Fallback to the default if registry key not found
+    Result := ExpandConstant('{userappdata}\{#MyAppName}');
+end;
+
+// Helper function to check if the WebView2 runtime is present
+function WebView2Present: Boolean;
+begin
+  Result :=
+    DirExists(ExpandConstant('{pf32}\Microsoft\EdgeWebView\Application')) or
+    DirExists(ExpandConstant('{localappdata}\Microsoft\EdgeWebView\Application'));
+end;
+
+// Helper function to determine if user data should be removed during uninstall
+function ShouldRemoveData: Boolean;
+begin
+  Result := (Assigned(RemoveDataCheckBox) and RemoveDataCheckBox.Checked);
+end;
+
+// Saves the installer's hash to a file in the data directory
 procedure SaveInstallerHash;
 var
   Hash: String;
@@ -69,47 +106,7 @@ begin
   end;
 end;
 
-function GetInstalledDataDir(Param: string): string;
-var
-  DataDir: string;
-begin
-  // Read the stored data directory path from the registry
-  if RegQueryStringValue(HKCU, 'Software\' + '{#MyAppName}', 'DataDir', DataDir) then
-    Result := DataDir
-  else
-    // Fallback to the default if registry key not found
-    Result := ExpandConstant('{userappdata}\{#MyAppName}');
-end;
-
-procedure InitializeUninstall;
-begin
-  // Create a checkbox on the uninstaller confirmation page
-  RemoveDataCheckBox := TNewCheckBox.Create(WizardForm);
-  RemoveDataCheckBox.Parent := WizardForm.ConfirmPage;
-  RemoveDataCheckBox.Caption := 'Remove all user data and settings';
-  RemoveDataCheckBox.Checked := False;
-end;
-
-function ShouldRemoveData: Boolean;
-begin
-  Result := (Assigned(RemoveDataCheckBox) and RemoveDataCheckBox.Checked);
-end;
-
-function WebView2Present: Boolean;
-begin
-  Result :=
-    DirExists(ExpandConstant('{pf32}\Microsoft\EdgeWebView\Application')) or
-    DirExists(ExpandConstant('{localappdata}\Microsoft\EdgeWebView\Application'));
-end;
-
-function GetChosenDataDir(Param: string): string;
-begin
-  if Assigned(DataDirPage) then
-    Result := DataDirPage.Values[0]
-  else
-    Result := ExpandConstant('{userappdata}\{#MyAppName}');
-end;
-
+// Runs when the installer wizard is initialized
 procedure InitializeWizard;
 var
   PrevData: String;
@@ -129,6 +126,17 @@ begin
     DataDirPage.Values[0] := ExpandConstant('{userappdata}\{#MyAppName}');
 end;
 
+// Runs when the uninstaller is initialized
+procedure InitializeUninstall;
+begin
+  // Create a checkbox on the uninstaller confirmation page
+  RemoveDataCheckBox := TNewCheckBox.Create(WizardForm);
+  RemoveDataCheckBox.Parent := WizardForm.ConfirmPage;
+  RemoveDataCheckBox.Caption := 'Remove all user data and settings';
+  RemoveDataCheckBox.Checked := False;
+end;
+
+// Runs when the installer moves to a new step
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   D: string;
