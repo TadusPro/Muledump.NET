@@ -21,11 +21,19 @@
         
         <div class="setting-item">
             <label for="groupRarities">Account for rarity when summarizing items</label>
-            <input type="checkbox" 
+            <input type="checkbox"
                    id="groupRarities"
                    checked="@SettingsManager.GlobalSettings.GroupRarities"
                    @onchange="(e) => UpdateGlobalSetting(nameof(SettingsManager.GlobalSettings.GroupRarities), e.Value)" />
         </div>
+        <div class="setting-item">
+            <label for="checkForUpdates">Check for updates</label>
+            <input type="checkbox"
+                   id="checkForUpdates"
+                   checked="@SettingsManager.GlobalSettings.CheckForUpdates"
+                   @onchange="(e) => UpdateGlobalSetting(nameof(SettingsManager.GlobalSettings.CheckForUpdates), e.Value)" />
+        </div>
+
     </div>
 </div>
 

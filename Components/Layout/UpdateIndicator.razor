@@ -1,4 +1,6 @@
+@using MDTadusMod.Services
 @inject MDTadusMod.Services.UpdaterService Updater
+@inject SettingsService SettingsManager
 
 @if (showUpdate)
 {
@@ -14,8 +16,8 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+        if (!SettingsManager.GlobalSettings.CheckForUpdates) return;
 
-        // Ask once on first render
         var info = await Updater.CheckAsync();
         showUpdate = info is not null;
         StateHasChanged();
