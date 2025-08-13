@@ -216,7 +216,6 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        // Fallback to global settings if account-specific options are not provided.
         if (VO == null)
         {
             VO = SettingsManager.GlobalOptions;
@@ -236,14 +235,13 @@
         // Prepare item lists for the ItemContainer components
         var equipment = Character.EquipmentList ?? new List<Item>();
         EquipmentItems = equipment.Take(4).ToList();
-        // Pad equipment to always show 4 slots
         while (EquipmentItems.Count < 4)
         {
             EquipmentItems.Add(new Item { Id = -1 });
         }
         InventoryItems = equipment.Skip(4).ToList();
 
-        // Build unachieved goals list if requested
+        // Build unachieved goals list if requested (only percentage/multiplicative bonuses)
         UnachievedGoals.Clear();
         if (VO.AdditionalGoals)
         {
@@ -257,6 +255,7 @@
                 var groupOrder = new List<string> { "Stats Bonuses", "Enemy Bonuses", "Dungeon Bonuses" };
 
                 var remaining = allBonuses
+                    .Where(b => b.RelativeBonus > 0) // only multiplicative (percentage) bonuses
                     .Where(b => b.Condition != null && b.Condition.Length > 0 && !achievedCodes.Contains(b.code))
                     .OrderBy(b => {
                         var idx = groupOrder.IndexOf(b.DisplayGroup);
@@ -267,7 +266,38 @@
                     .ThenBy(b => b.code)
                     .ToList();
 
+                // Select the "next" goal per logical key
+                var bestByKey = new Dictionary<string, (FameBonus bonus, long distance, int increment)>();
                 foreach (var bonus in remaining)
+                {
+                    var key = GetGoalKey(bonus, statNameToIdMap);
+                    var dist = GetBonusDistanceToSatisfy(bonus, statNameToIdMap);
+                    var inc = CalculateBonusIncrement(bonus);
+
+                    if (dist < 0) continue;
+
+                    if (!bestByKey.TryGetValue(key, out var current))
+                    {
+                        bestByKey[key] = (bonus, dist, inc);
+                    }
+                    else
+                    {
+                        if (dist < current.distance || (dist == current.distance && inc > current.increment))
+                            bestByKey[key] = (bonus, dist, inc);
+                    }
+                }
+
+                var selected = bestByKey.Values
+                    .Select(v => v.bonus)
+                    .OrderBy(b => {
+                        var idx = groupOrder.IndexOf(b.DisplayGroup);
+                        return idx == -1 ? int.MaxValue : idx;
+                    })
+                    .ThenBy(b => b.DisplayGroup)
+                    .ThenBy(b => b.DisplayCategory)
+                    .ThenBy(b => b.code);
+
+                foreach (var bonus in selected)
                 {
                     var requirement = BuildRequirementText(bonus, statNameToIdMap);
                     var inc = CalculateBonusIncrement(bonus);
@@ -281,6 +311,71 @@
         }
     }
 
+    // Build a grouping key so related bonuses collapse to a single "next" entry.
+    private string GetGoalKey(FameBonus bonus, Dictionary<string, int> statNameToIdMap)
+    {
+        var statCond = bonus.Condition?.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c.stat));
+        if (statCond != null)
+            return $"stat:{statCond.stat}".ToLowerInvariant();
+
+        if (!string.IsNullOrWhiteSpace(bonus.DisplayCategory))
+            return $"cat:{bonus.DisplayCategory}".ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(bonus.DisplayName))
+            return $"name:{bonus.DisplayName}".ToLowerInvariant();
+        return $"code:{bonus.code}";
+    }
+
+    private long GetBonusDistanceToSatisfy(FameBonus bonus, Dictionary<string, int> statNameToIdMap)
+    {
+        if (bonus.Condition == null || bonus.Condition.Length == 0) return long.MaxValue / 2;
+
+        long worst = 0;
+        foreach (var cond in bonus.Condition)
+        {
+            long d = GetConditionDistance(cond, bonus.Repeatable, statNameToIdMap);
+            if (d < 0) return -1;
+            if (d > worst) worst = d;
+        }
+        return worst;
+    }
+
+    private long GetConditionDistance(RotMGAssetExtractor.ModelHelpers.Condition cond, bool repeatable, Dictionary<string, int> statNameToIdMap)
+    {
+        switch (cond.Value)
+        {
+            case "FirstCharacter":
+                return Character.Id == 0 ? 0 : long.MaxValue / 2;
+
+            case "MaxedStat":
+                return MaxedStats.Count >= 8 ? 0 : long.MaxValue / 3;
+
+            case "StatValue":
+            case "gte":
+            case "lte":
+            case "eq":
+            default:
+                {
+                    if (string.IsNullOrWhiteSpace(cond.stat) || cond.threshold <= 0)
+                        return long.MaxValue / 2;
+
+                    long current = GetStatValue(cond.stat, statNameToIdMap);
+                    if (repeatable)
+                    {
+                        long mod = current % cond.threshold;
+                        return mod == 0 ? cond.threshold : (cond.threshold - mod);
+                    }
+
+                    var cmp = string.IsNullOrWhiteSpace(cond.Value) ? "gte" : cond.Value.ToLowerInvariant();
+                    return cmp switch
+                    {
+                        "lte" => current <= cond.threshold ? 0 : (current - cond.threshold),
+                        "eq"  => Math.Abs(current - cond.threshold),
+                        _     => current >= cond.threshold ? 0 : (cond.threshold - current),
+                    };
+                }
+        }
+    }
+
     private string BuildRequirementText(FameBonus bonus, Dictionary<string, int> statNameToIdMap)
     {
         if (bonus.Condition == null || bonus.Condition.Length == 0)
@@ -290,7 +385,6 @@
 
         foreach (var cond in bonus.Condition)
         {
-            // Repeatable: show progress toward next threshold
             if (bonus.Repeatable && cond.threshold > 0 && !string.IsNullOrWhiteSpace(cond.stat))
             {
                 var statDisp = GetStatDisplayName(cond.stat, statNameToIdMap);
@@ -310,36 +404,8 @@
                 continue;
             }
 
-            // Non-repeatable: interpret condition types
-            switch (cond.Value)
-            {
-                case "FirstCharacter":
-                    parts.Add("Be the first character on the account");
-                    break;
-
-                case "MaxedStat":
-                    parts.Add($"Max out {cond.stat}");
-                    break;
-
-                case "StatValue":
-                case "gte":
-                case "lte":
-                case "eq":
-                default:
-                    {
-                        var statDisp = GetStatDisplayName(cond.stat, statNameToIdMap);
-                        long current = GetStatValue(cond.stat, statNameToIdMap);
-                        var cmp = string.IsNullOrWhiteSpace(cond.Value) ? "gte" : cond.Value.ToLowerInvariant();
-                        string text = cmp switch
-                        {
-                            "lte" => $"{statDisp} ≤ {FormatNumber(cond.threshold)} (current: {FormatNumber(current)})",
-                            "eq" => $"{statDisp} = {FormatNumber(cond.threshold)} (current: {FormatNumber(current)})",
-                            _ => $"{statDisp} ≥ {FormatNumber(cond.threshold)} (current: {FormatNumber(current)})"
-                        };
-                        parts.Add(text);
-                        break;
-                    }
-            }
+            var statName = GetStatDisplayName(cond.stat, statNameToIdMap);
+            parts.Add($"{statName} ≥ {FormatNumber(cond.threshold)}");
         }
 
         return string.Join("; ", parts);
@@ -402,12 +468,8 @@
 
     private int CalculateBonusIncrement(FameBonus bonus)
     {
-        // Convert relative bonus from percentage to a multiplier
         double increment = Math.Ceiling(Character.CurrentFame * (bonus.RelativeBonus / 100f));
-
-        // Add the absolute bonus.
         increment += bonus.AbsoluteBonus;
-
         return (int)increment;
     }
 
