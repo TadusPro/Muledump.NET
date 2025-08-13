@@ -5,7 +5,7 @@
 @inject SettingsService SettingsManager
 
 <div class="char">
-    @if (ViewOptions.CharDescription)
+    @if (VO.CharDescription)
     {
         <div class="chdesc">
             <SpriteCard Type="@(Character.Skin != 0 ? Character.Skin : Character.ObjectType)" BackgroundOff="true"></SpriteCard>
@@ -18,7 +18,7 @@
         </div>
     }
 
-    @if (ViewOptions.Stats)
+    @if (VO.Stats)
     {
         <table class="stats">
             <tbody>
@@ -50,24 +50,24 @@
         </table>
     }
 
-    @if (ViewOptions.Equipment)
+    @if (VO.Equipment)
     {
         <ItemContainer Items="EquipmentItems"
-                       DisplayType="@GetDisplayType(nameof(ViewOptions.EquipmentDisplayType))"
+                       DisplayType="@GetDisplayType(nameof(VO.EquipmentDisplayType))"
                        NoPadding="true" />
     }
-    @if (ViewOptions.Inventory)
+    @if (VO.Inventory)
     {
         <ItemContainer Items="InventoryItems"
-                       DisplayType="@GetDisplayType(nameof(ViewOptions.InventoryDisplayType))"
+                       DisplayType="@GetDisplayType(nameof(VO.InventoryDisplayType))"
                        NoPadding="true"/>
     }
 
-    @if (ViewOptions.AdditionalStats || ViewOptions.AdditionalBonuses)
+    @if (VO.AdditionalStats || VO.AdditionalBonuses)
     {
         <table class="pcstats">
             <tbody>
-                @if (ViewOptions.AdditionalStats)
+                @if (VO.AdditionalStats)
                 {
                     @foreach (var stat in Character.ParsedPCStats.OrderBy(s => s.Key))
                     {
@@ -105,7 +105,7 @@
                         }
                     }
                 }
-                @if ((ViewOptions.AdditionalBonuses) && CharacterFameBonuses.TryGetValue(Character.Id, out var bonuses) && bonuses.Any())
+                @if ((VO.AdditionalBonuses) && CharacterFameBonuses.TryGetValue(Character.Id, out var bonuses) && bonuses.Any())
                 {
                     string currentGroup = null;
                     var renderedCategories = new HashSet<string>();
@@ -141,7 +141,7 @@
                                 </tr>
                             }
                         }
-                        else if (ViewOptions.AdditionalBonuses)
+                        else if (VO.AdditionalBonuses)
                         {
                             <tr>
                                 <td>@bonus.DisplayName</td>
@@ -150,7 +150,7 @@
                         }
                     }
                 }
-                @if (ViewOptions.AdditionalBonuses)
+                @if (VO.AdditionalBonuses)
                 {
                     <tr>
                         <td><strong>Total Fame</strong></td>
@@ -168,7 +168,7 @@
     public Character Character { get; set; }
 
     [Parameter, EditorRequired]
-    public AccountViewOptions ViewOptions { get; set; }
+    public AccountViewOptions VO { get; set; }
 
     [Parameter, EditorRequired]
     public Dictionary<int, Dictionary<string, int>> MaxStatsPerClass { get; set; }
@@ -190,9 +190,9 @@
     protected override void OnParametersSet()
     {
         // Fallback to global settings if account-specific options are not provided.
-        if (ViewOptions == null)
+        if (VO == null)
         {
-            ViewOptions = SettingsManager.GlobalOptions;
+            VO = SettingsManager.GlobalOptions;
         }
 
         MaxedStats = GetMaxedStats(Character);
@@ -224,7 +224,7 @@
             return ContainerDisplayType.chest;
 
         var property = typeof(AccountViewOptions).GetProperty(containerPropertyName);
-        if (property != null && property.GetValue(ViewOptions) is ContainerDisplayType displayType)
+        if (property != null && property.GetValue(VO) is ContainerDisplayType displayType)
         {
             return displayType;
         }
