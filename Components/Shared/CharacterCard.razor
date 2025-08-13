@@ -1,8 +1,9 @@
-@using MDTadusMod.Data
+﻿@using MDTadusMod.Data
 @using MDTadusMod.Services
 @using RotMGAssetExtractor.Model
 @using System.Diagnostics
 @inject SettingsService SettingsManager
+@inject AssetService AssetService
 
 <div class="char">
     @if (VO.CharDescription)
@@ -63,7 +64,7 @@
                        NoPadding="true"/>
     }
 
-    @if (VO.AdditionalStats || VO.AdditionalBonuses)
+    @if (VO.AdditionalStats || VO.AdditionalBonuses || VO.AdditionalGoals)
     {
         <table class="pcstats">
             <tbody>
@@ -157,6 +158,29 @@
                         <td class="bonus"><strong>@TotalFame</strong></td>
                     </tr>
                 }
+
+                @if (VO.AdditionalGoals && UnachievedGoals?.Any() == true)
+                {
+                    string currentGroup2 = null;
+                    foreach (var g in UnachievedGoals)
+                    {
+                        if (g.Group != currentGroup2)
+                        {
+                            currentGroup2 = g.Group;
+                            if (!string.IsNullOrWhiteSpace(currentGroup2))
+                            {
+                                <tr>
+                                    <td class="bonus-group-header"><strong>@currentGroup2</strong></td>
+                                    <td></td>
+                                </tr>
+                            }
+                        }
+                        <tr>
+                            <td>@g.Name</td>
+                            <td class="bonus">+@g.Increment — @g.Requirement</td>
+                        </tr>
+                    }
+                }
             </tbody>
         </table>
     }
@@ -187,7 +211,10 @@
     private List<Item> EquipmentItems { get; set; } = new();
     private List<Item> InventoryItems { get; set; } = new();
 
-    protected override void OnParametersSet()
+    private record GoalView(string Group, string Name, int Increment, string Requirement);
+    private List<GoalView> UnachievedGoals = new();
+
+    protected override async Task OnParametersSetAsync()
     {
         // Fallback to global settings if account-specific options are not provided.
         if (VO == null)
@@ -214,8 +241,184 @@
         {
             EquipmentItems.Add(new Item { Id = -1 });
         }
-
         InventoryItems = equipment.Skip(4).ToList();
+
+        // Build unachieved goals list if requested
+        UnachievedGoals.Clear();
+        if (VO.AdditionalGoals)
+        {
+            try
+            {
+                var allBonuses = await AssetService.GetAllFameBonuses();
+                var statNameToIdMap = await AssetService.GetPCStatNameToIdMap();
+                var achieved = CharacterFameBonuses.TryGetValue(Character.Id, out var achievedList) ? achievedList : new List<FameBonus>();
+                var achievedCodes = new HashSet<int>(achieved.Select(b => b.code));
+
+                var groupOrder = new List<string> { "Stats Bonuses", "Enemy Bonuses", "Dungeon Bonuses" };
+
+                var remaining = allBonuses
+                    .Where(b => b.Condition != null && b.Condition.Length > 0 && !achievedCodes.Contains(b.code))
+                    .OrderBy(b => {
+                        var idx = groupOrder.IndexOf(b.DisplayGroup);
+                        return idx == -1 ? int.MaxValue : idx;
+                    })
+                    .ThenBy(b => b.DisplayGroup)
+                    .ThenBy(b => b.DisplayCategory)
+                    .ThenBy(b => b.code)
+                    .ToList();
+
+                foreach (var bonus in remaining)
+                {
+                    var requirement = BuildRequirementText(bonus, statNameToIdMap);
+                    var inc = CalculateBonusIncrement(bonus);
+                    UnachievedGoals.Add(new GoalView(bonus.DisplayGroup ?? string.Empty, bonus.DisplayName ?? $"Bonus #{bonus.code}", inc, requirement));
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CharacterCard] Failed to compute goals: {ex.Message}");
+            }
+        }
+    }
+
+    private string BuildRequirementText(FameBonus bonus, Dictionary<string, int> statNameToIdMap)
+    {
+        if (bonus.Condition == null || bonus.Condition.Length == 0)
+            return "No conditions specified";
+
+        var parts = new List<string>();
+
+        foreach (var cond in bonus.Condition)
+        {
+            // Repeatable: show progress toward next threshold
+            if (bonus.Repeatable && cond.threshold > 0 && !string.IsNullOrWhiteSpace(cond.stat))
+            {
+                var statDisp = GetStatDisplayName(cond.stat, statNameToIdMap);
+                long current = GetStatValue(cond.stat, statNameToIdMap);
+                if (current <= 0)
+                {
+                    parts.Add($"Reach {FormatNumber(cond.threshold)} {statDisp}");
+                }
+                else
+                {
+                    long toNext = cond.threshold - (current % cond.threshold);
+                    if (toNext == cond.threshold) toNext = 0;
+                    parts.Add(toNext > 0
+                        ? $"{FormatNumber(toNext)} more {statDisp} to next bonus (current: {FormatNumber(current)})"
+                        : $"Next bonus at +{FormatNumber(cond.threshold)} {statDisp} (current: {FormatNumber(current)})");
+                }
+                continue;
+            }
+
+            // Non-repeatable: interpret condition types
+            switch (cond.Value)
+            {
+                case "FirstCharacter":
+                    parts.Add("Be the first character on the account");
+                    break;
+
+                case "MaxedStat":
+                    parts.Add($"Max out {cond.stat}");
+                    break;
+
+                case "StatValue":
+                case "gte":
+                case "lte":
+                case "eq":
+                default:
+                    {
+                        var statDisp = GetStatDisplayName(cond.stat, statNameToIdMap);
+                        long current = GetStatValue(cond.stat, statNameToIdMap);
+                        var cmp = string.IsNullOrWhiteSpace(cond.Value) ? "gte" : cond.Value.ToLowerInvariant();
+                        string text = cmp switch
+                        {
+                            "lte" => $"{statDisp} ≤ {FormatNumber(cond.threshold)} (current: {FormatNumber(current)})",
+                            "eq" => $"{statDisp} = {FormatNumber(cond.threshold)} (current: {FormatNumber(current)})",
+                            _ => $"{statDisp} ≥ {FormatNumber(cond.threshold)} (current: {FormatNumber(current)})"
+                        };
+                        parts.Add(text);
+                        break;
+                    }
+            }
+        }
+
+        return string.Join("; ", parts);
+    }
+
+    private string GetStatDisplayName(string statName, Dictionary<string, int> statNameToIdMap)
+    {
+        if (string.IsNullOrWhiteSpace(statName)) return "stat";
+        if (statNameToIdMap.TryGetValue(statName, out var id))
+        {
+            return GetPCStatName(id);
+        }
+        return statName;
+    }
+
+    private long GetStatValue(string statName, Dictionary<string, int> statNameToIdMap)
+    {
+        if (string.IsNullOrWhiteSpace(statName)) return 0;
+        if (statNameToIdMap.TryGetValue(statName, out var id))
+        {
+            return Character.ParsedPCStats.GetValueOrDefault(id, 0L);
+        }
+        return 0;
+    }
+
+    private (int Count, Func<string, bool> IsMaxed) GetMaxedStats(Character character)
+    {
+        if (character == null || MaxStatsPerClass == null || !MaxStatsPerClass.TryGetValue(character.ObjectType, out var maxStats))
+        {
+            return (0, s => false);
+        }
+
+        var maxed = new Dictionary<string, bool>();
+        int maxedCount = 0;
+
+        void CheckStat(string name, int value)
+        {
+            if (maxStats.TryGetValue(name, out var maxStatValue) && value >= maxStatValue)
+            {
+                maxed[name] = true;
+                maxedCount++;
+            }
+            else
+            {
+                maxed[name] = false;
+            }
+        }
+
+        CheckStat("MaxHitPoints", character.MaxHitPoints);
+        CheckStat("MaxMagicPoints", character.MaxMagicPoints);
+        CheckStat("Attack", character.Attack);
+        CheckStat("Defense", character.Defense);
+        CheckStat("Speed", character.Speed);
+        CheckStat("Dexterity", character.Dexterity);
+        CheckStat("Vitality", character.Vitality);
+        CheckStat("Wisdom", character.Wisdom);
+
+        return (maxedCount, s => maxed.GetValueOrDefault(s));
+    }
+
+    private int CalculateBonusIncrement(FameBonus bonus)
+    {
+        // Convert relative bonus from percentage to a multiplier
+        double increment = Math.Ceiling(Character.CurrentFame * (bonus.RelativeBonus / 100f));
+
+        // Add the absolute bonus.
+        increment += bonus.AbsoluteBonus;
+
+        return (int)increment;
+    }
+
+    private string GetClassName(int objectType)
+    {
+        return ClassIdToNameMap.GetValueOrDefault(objectType, "Unknown");
+    }
+
+    private string GetPCStatName(int statId)
+    {
+        return PCStatIdToNameMap.GetValueOrDefault(statId, $"#{statId}");
     }
 
     private ContainerDisplayType GetDisplayType(string containerPropertyName)
@@ -337,62 +540,6 @@
         }
 
         return enchants.Count(id => id != -3);
-    }
-
-    private int CalculateBonusIncrement(FameBonus bonus)
-    {
-        // Convert relative bonus from percentage to a multiplier
-        double increment = Math.Ceiling(Character.CurrentFame * (bonus.RelativeBonus / 100f));
-
-        // Add the absolute bonus.
-        increment += bonus.AbsoluteBonus;
-
-        return (int)increment;
-    }
-
-    private string GetClassName(int objectType)
-    {
-        return ClassIdToNameMap.GetValueOrDefault(objectType, "Unknown");
-    }
-
-    private string GetPCStatName(int statId)
-    {
-        return PCStatIdToNameMap.GetValueOrDefault(statId, $"#{statId}");
-    }
-
-    private (int Count, Func<string, bool> IsMaxed) GetMaxedStats(Character character)
-    {
-        if (character == null || MaxStatsPerClass == null || !MaxStatsPerClass.TryGetValue(character.ObjectType, out var maxStats))
-        {
-            return (0, s => false);
-        }
-
-        var maxed = new Dictionary<string, bool>();
-        int maxedCount = 0;
-
-        void CheckStat(string name, int value)
-        {
-            if (maxStats.TryGetValue(name, out var maxStatValue) && value >= maxStatValue)
-            {
-                maxed[name] = true;
-                maxedCount++;
-            }
-            else
-            {
-                maxed[name] = false;
-            }
-        }
-
-        CheckStat("MaxHitPoints", character.MaxHitPoints);
-        CheckStat("MaxMagicPoints", character.MaxMagicPoints);
-        CheckStat("Attack", character.Attack);
-        CheckStat("Defense", character.Defense);
-        CheckStat("Speed", character.Speed);
-        CheckStat("Dexterity", character.Dexterity);
-        CheckStat("Vitality", character.Vitality);
-        CheckStat("Wisdom", character.Wisdom);
-
-        return (maxedCount, s => maxed.GetValueOrDefault(s));
     }
 
     private string FormatNumber(long num)
