@@ -309,9 +309,78 @@
                     }
                 }));
             }
+
+            // Batch fetch PC stat display names used by these characters
+            var newStatIds = AccountData.Characters
+                .Where(c => c.ParsedPCStats != null)
+                .SelectMany(c => c.ParsedPCStats.Keys)
+                .Distinct()
+                .Where(id => !PCStatIdToNameMap.ContainsKey(id))
+                .ToList();
+
+            if (newStatIds.Any())
+            {
+                tasks.Add(Task.Run(async () =>
+                {
+                    var results = await Task.WhenAll(newStatIds.Select(async id =>
+                        new { Id = id, Name = await AssetService.GetPCStatName(id) }));
+                    
+                    foreach (var result in results)
+                    {
+                        PCStatIdToNameMap[result.Id] = result.Name;
+                    }
+                }));
+            }
+
+            // Compute fame bonuses per character (cache + map used by CharacterCard)
+            var newBonusChars = AccountData.Characters
+                .Where(c => !_fameBonusCache.ContainsKey(c.Id))
+                .ToList();
+
+            if (newBonusChars.Any())
+            {
+                tasks.Add(Task.Run(async () =>
+                {
+                    var results = await Task.WhenAll(newBonusChars.Select(async c =>
+                        new { c.Id, Bonuses = await PCStatsParser.EvaluateBonuses(c) }));
+
+                    foreach (var r in results)
+                    {
+                        _fameBonusCache[r.Id] = r.Bonuses;
+                        CharacterFameBonuses[r.Id] = r.Bonuses;
+                    }
+                }));
+            }
+
+            // Compute maxed stats count (used for CharOrder.maxed)
+            var newMaxedChars = AccountData.Characters
+                .Where(c => !CharacterMaxedStatsCount.ContainsKey(c.Id))
+                .ToList();
+
+            if (newMaxedChars.Any())
+            {
+                tasks.Add(Task.Run(async () =>
+                {
+                    var results = await Task.WhenAll(newMaxedChars.Select(async c =>
+                        new { c.Id, Count = await AssetService.GetMaxedStatsCount(c) }));
+
+                    foreach (var r in results)
+                    {
+                        CharacterMaxedStatsCount[r.Id] = r.Count;
+                    }
+                }));
+            }
             
-            // Similar optimization for other data fetching...
             await Task.WhenAll(tasks);
+
+            // Ensure CharacterFameBonuses is fully populated from cache
+            foreach (var c in AccountData.Characters)
+            {
+                if (_fameBonusCache.TryGetValue(c.Id, out var bonuses))
+                {
+                    CharacterFameBonuses[c.Id] = bonuses;
+                }
+            }
         }
     }
 
