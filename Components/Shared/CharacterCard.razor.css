@@ -95,3 +95,31 @@
 .bonus {
     color: #FFC800;
 }
+
+.pcstats .goal-line {
+    text-align: left !important;
+}
+.pcstats .goal-name {
+    color: #57AD62;
+    font-weight: 600;
+}
+.pcstats .goal-req {
+    color: inherit;
+    padding-left: 4px;
+}
+.pcstats .goal-inc {
+    color: #f2c94c;
+    font-weight: 600;
+    padding-left: 4px;
+}
+
+.fame-icon {
+    width: 10px;
+    height: 10px;
+    vertical-align: middle; /* align with text baseline */
+}
+.fame-state {
+    font-size: 0.8em; /* smaller than surrounding text */
+    opacity: 0.9; /* optional: slightly deemphasize */
+    margin-right:4px;
+}
