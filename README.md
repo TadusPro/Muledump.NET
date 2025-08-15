@@ -11,7 +11,7 @@ This tool is an items and stat focused account manager for the game RotMG. It is
 
 ## Installation
 
-1.  Navigate to the [**Releases**](https://github.com/TadusPro/MDTadusMod/releases) page.
+1.  Navigate to the [**Releases**](https://github.com/TadusPro/Muledump.NET/releases/tag/latest) page.
 2.  Download the latest version for your operating system. You will find two options:
     *   **Installer**: Guides you through a standard installation process and includes an auto-updater to keep the application current.
     *   **Portable**: A `.zip` file that you can extract and run anywhere without installation.
