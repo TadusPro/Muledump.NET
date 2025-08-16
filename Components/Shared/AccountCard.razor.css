@@ -138,3 +138,15 @@ p {
         cursor: pointer;
         line-height: 1;
     }
+
+/* Header action buttons: no gaps between them */
+.mule header .header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0; /* prevents extra spacing from whitespace */
+}
+
+/* Remove per-button margins inside the header action group */
+    .mule header .header-actions > button {
+        margin: 0 3px 0 0;
+    }

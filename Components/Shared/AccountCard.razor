@@ -5,6 +5,7 @@
 @inject AssetService AssetService
 @inject SettingsService SettingsManager
 @inject IJSRuntime JSRuntime
+@inject NavigationManager NavManager
 @implements IAsyncDisposable
 
 @if (Account != null && VO != null)
@@ -36,9 +37,10 @@
             {
                 <p class="mule-name" style="grid-column: 2;">@(AccountData?.Name ?? Account.Email)</p>
             }
-            <button @onclick="HandleRefreshClick" disabled="@IsRefreshing" style="grid-column: 3;">
-                ↻
-            </button>
+            <div class="header-actions" style="grid-column: 3;">
+                <button @onclick="EditAccount" title="Edit account">≡</button>
+                <button @onclick="HandleRefreshClick" disabled="@IsRefreshing" title="Reload">↻</button>
+            </div>
         </header>
 
         @if (!VO.Shrink && VO.Characters && (AccountData?.Characters?.Any() == true) && (
@@ -204,6 +206,12 @@
         _effectiveCharRowLength = VO.CharRowLength;
         SettingsManager.OnChange += HandleSettingsChanged;
         MaxStatsPerClass = await AssetService.GetMaxStatsPerClass();
+    }
+
+    private void EditAccount()
+    {
+        if (Account?.Id != Guid.Empty)
+            NavManager.NavigateTo($"/settings/accounts/edit/{Account.Id}");
     }
 
     private ContainerDisplayType GetDisplayType(string containerPropertyName)
