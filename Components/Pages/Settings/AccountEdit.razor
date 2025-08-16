@@ -5,6 +5,7 @@
 
 @inject Services.AccountService AccountSvc
 @inject NavigationManager NavManager
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 <div class="account-edit-container">
@@ -51,6 +52,10 @@
                     <div class="horizontal">
                         <button type="submit" disabled="@(!editContext.IsModified() || isInvalid)">Update</button>
                         <button type="button" class="close" @onclick="Cancel">Cancel</button>
+                    </div>
+
+                    <div class="horizontal delete-row">
+                        <button type="button" class="delete" @onclick="DeleteAccount">Delete Account</button>
                     </div>
                 </div>
             }
@@ -157,6 +162,17 @@
         }
 
         await AccountSvc.SaveAccountsAsync(accounts);
+        NavManager.NavigateTo("/settings/accounts");
+    }
+
+    private async Task DeleteAccount()
+    {
+        if (IsNew || account == null) return;
+
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Delete account '{account.Email}'?");
+        if (!confirmed) return;
+
+        await AccountSvc.DeleteAccountAsync(account.Id);
         NavManager.NavigateTo("/settings/accounts");
     }
 

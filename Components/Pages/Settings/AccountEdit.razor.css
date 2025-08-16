@@ -56,9 +56,9 @@ button {
     width: 75px;
     text-align:center;
 }
-    button:disabled {
-        display: none;
-    }
+button:disabled {
+    display: none;
+}
 
 .close {
     border: transparent solid 2px;
@@ -90,3 +90,15 @@ button {
     color: #ffffff;
     outline: none;
 }
+
+/* Delete button: keep base style, change colors, and fit text horizontally */
+button.delete {
+    background-color: #c0392b; /* red background */
+    color: #fff;               /* white text for contrast */
+    width: auto;               /* fit text width */
+    white-space: nowrap;       /* keep on one line */
+}
+
+/* Optional: hover/active states */
+button.delete:hover  { background-color: #a93226; }
+button.delete:active { background-color: #922b21; }
