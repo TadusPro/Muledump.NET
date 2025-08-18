@@ -1,6 +1,6 @@
 function getElementWidth(element) {
     if (element) {
-        return element.clientWidth;
+        return element.clientWidth || element.getBoundingClientRect().width || 0;
     }
     return 0;
 }
@@ -15,23 +15,20 @@ function debounce(func, delay) {
     };
 }
 
-// This function now observes the BODY element for resize events.
 function observeResize(dotNetObjectReference, element) {
     if (!element) return;
 
     const debouncedCallback = debounce(() => {
-        // We always report the body's clientWidth
-        dotNetObjectReference.invokeMethodAsync('OnElementResized', document.body.clientWidth);
-    }, 50); // 50ms delay to allow the layout to settle
+        const w = element.clientWidth || element.getBoundingClientRect().width || 0;
+        dotNetObjectReference.invokeMethodAsync('OnElementResized', w);
+    }, 50);
 
-    // We use a ResizeObserver on the body to detect changes.
     const observer = new ResizeObserver(debouncedCallback);
-    observer.observe(document.body);
+    observer.observe(element);
 
-    // We still use the component's element as a key to manage observers.
     observers.set(element, observer);
 
-    // Initial call to set the size right away.
+    // Initial call
     debouncedCallback();
 }
 

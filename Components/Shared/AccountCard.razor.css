@@ -2,12 +2,19 @@
     transition: box-shadow 0.2s ease-in-out;
     display: flex;
     flex-direction: column;
+    /* allow width to follow content so CharRowLength can expand the card */
     width: fit-content;
     min-width: 184px;
     background-color: #333;
     height: fit-content;
-    /* break-inside: avoid; */ /* This is only for column layouts */
+
+    /* vertical gap that Masonry respects (visible, thanks to background-clip) */
+    padding-bottom: var(--masonry-vert-gap, 10px);
+    background-clip: content-box;
 }
+
+/* If you previously added .mule::after for spacing, remove it */
+.mule::after { content: none; }
 
 .mule header {
     display: grid;

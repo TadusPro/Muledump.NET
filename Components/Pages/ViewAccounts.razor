@@ -4,6 +4,7 @@
 @inject Services.RotmgApiService RotmgApiSvc
 @inject NavigationManager NavManager
 @inject Services.SettingsService SettingsManager
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 @if (accounts == null)
@@ -16,7 +17,7 @@ else if (!accounts.Any())
 }
 else
 {
-    <div class="account-list">
+    <div class="account-list" @ref="_accountListRef">
         @foreach (var account in accounts)
         {
             <AccountCard Account="@account"
@@ -35,10 +36,20 @@ else
     private Dictionary<Guid, MDTadusMod.Data.AccountData> accountDataMap = new();
     private Dictionary<Guid, string> refreshStatus = new();
     private HashSet<Guid> isRefreshing = new();
+    private ElementReference _accountListRef;
+    private bool _masonryInitialized;
 
     protected override async Task OnInitializedAsync()
     {
+<<<<<<< Updated upstream
         SettingsManager.OnChange += StateHasChanged; // Subscribe to changes
+=======
+        SettingsManager.OnChange += HandleViewSettingsChanged;
+        ReloadQueue.OnAccountDataUpdated += OnAccountDataUpdated;
+        ReloadQueue.OnAccountStatusChanged += OnAccountStatusChanged;
+        ReloadQueue.OnQueueChanged += OnQueueChanged;
+
+>>>>>>> Stashed changes
         accounts = await AccountSvc.GetAccountsAsync();
         if (accounts != null)
         {
@@ -46,28 +57,51 @@ else
             {
                 refreshStatus[acc.Id] = "Idle";
                 var data = await AccountSvc.GetAccountDataAsync(acc.Id);
-                if (data != null)
-                {
-                    accountDataMap[acc.Id] = data;
-                }
+                if (data != null) accountDataMap[acc.Id] = data;
             }
         }
     }
 
+<<<<<<< Updated upstream
     private void ViewDetails(Guid accountId)
     {
         NavManager.NavigateTo($"/account-details/{accountId}");
     }
+=======
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && accounts?.Any() == true && !_masonryInitialized)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("accountsMasonry.init", _accountListRef);
+                _masonryInitialized = true;
+            }
+            catch
+            {
+                // ignore if script not ready yet; it will be retried on next renders
+            }
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private void GoToAddAccount() => NavManager.NavigateTo("/settings/accounts/new");
+    private void ViewDetails(Guid accountId) => NavManager.NavigateTo($"/account-details/{accountId}");
+>>>>>>> Stashed changes
 
     private async Task RefreshAccountData(MDTadusMod.Data.Account account)
     {
         if (isRefreshing.Contains(account.Id)) return;
-
         isRefreshing.Add(account.Id);
         refreshStatus[account.Id] = "Refreshing...";
         StateHasChanged();
 
+<<<<<<< Updated upstream
         try
+=======
+        ReloadQueue.QueueAccount(account.Id, account.Email, async () =>
+>>>>>>> Stashed changes
         {
             // Get the existing data to pass to the service.
             var existingData = accountDataMap.GetValueOrDefault(account.Id);
@@ -76,6 +110,7 @@ else
             await AccountSvc.SaveAccountDataAsync(accountData);
             accountDataMap[account.Id] = accountData; // Update the map with the result.
 
+<<<<<<< Updated upstream
             if (accountData.PasswordError)
             {
                 refreshStatus[account.Id] = "Password Error";
@@ -96,10 +131,62 @@ else
             isRefreshing.Remove(account.Id);
             StateHasChanged();
         }
+=======
+    private void OnAccountDataUpdated(Guid accountId, MDTadusMod.Data.AccountData accountData)
+    {
+        accountDataMap[accountId] = accountData;
+        isRefreshing.Remove(accountId);
+        InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            if (_masonryInitialized) await JSRuntime.InvokeVoidAsync("accountsMasonry.layout", _accountListRef);
+        });
+    }
+
+    private void OnAccountStatusChanged(Guid accountId, string status)
+    {
+        refreshStatus[accountId] = status;
+        if (status is "Success" or "Error" or "Password Error")
+            isRefreshing.Remove(accountId);
+
+        InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            if (_masonryInitialized) await JSRuntime.InvokeVoidAsync("accountsMasonry.layout", _accountListRef);
+        });
+    }
+
+    private void OnQueueChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            if (_masonryInitialized) await JSRuntime.InvokeVoidAsync("accountsMasonry.layout", _accountListRef);
+        });
+    }
+
+    private async void HandleViewSettingsChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            if (_masonryInitialized)
+            {
+                try { await JSRuntime.InvokeVoidAsync("accountsMasonry.layout", _accountListRef); } catch { }
+            }
+        });
+>>>>>>> Stashed changes
     }
 
     public void Dispose()
     {
+<<<<<<< Updated upstream
         SettingsManager.OnChange -= StateHasChanged; // Unsubscribe to prevent memory leaks
+=======
+        SettingsManager.OnChange -= HandleViewSettingsChanged;
+        ReloadQueue.OnAccountDataUpdated -= OnAccountDataUpdated;
+        ReloadQueue.OnAccountStatusChanged -= OnAccountStatusChanged;
+        ReloadQueue.OnQueueChanged -= OnQueueChanged;
+>>>>>>> Stashed changes
     }
 }

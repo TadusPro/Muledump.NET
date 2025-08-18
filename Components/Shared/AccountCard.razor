@@ -261,17 +261,14 @@
 
     private async void HandleSettingsChanged()
     {
-        // When settings change, we need to re-evaluate the row length.
-        // We can do this by getting the current body width and calling our existing logic.
         try
         {
-            var bodyWidth = await JSRuntime.InvokeAsync<double>("getWidth");
-            OnElementResized(bodyWidth);
+            var containerWidth = await JSRuntime.InvokeAsync<double>("getWidth");
+            OnElementResized(containerWidth);
         }
         catch (Exception ex)
         {
-            // Handle potential JS interop errors
-            Debug.WriteLine($"[AccountCard] Failed to recalculate row length on settings change: {ex.Message}");
+            Debug.WriteLine($"[AccountCard] Failed to recalc on settings change: {ex.Message}");
         }
     }
 

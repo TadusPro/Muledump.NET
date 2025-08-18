@@ -1,7 +1,52 @@
 .account-list {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start; /* Align items to the top of the row */
-    gap: 10px; /* Modern way to handle spacing for flexbox */
+    position: relative;
+    width: 100%;
     padding: 5px;
 }
+<<<<<<< Updated upstream
+=======
+
+/* No width clamp; Masonry handles horizontal packing */
+.account-list :deep(.mule) {
+    margin: 0 !important;
+    display: block;
+    box-sizing: border-box;
+    break-inside: avoid;
+}
+
+/* Allow grids inside the card to define width so the card can grow */
+.account-list :deep(.chars),
+.account-list :deep(.pets),
+.account-list :deep(.vaults),
+.account-list :deep(.potions),
+.account-list :deep(.materials),
+.account-list :deep(.spoils),
+.account-list :deep(.gifts),
+.account-list :deep(.petinv) {
+    /* remove max-width:100% and overflow-x:auto */
+    width: max-content;
+    overflow: visible;
+}
+
+/* Keep long text from expanding cards unexpectedly */
+.account-list :deep(.mule-name),
+.account-list :deep(.guid) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.no-accounts-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+.no-accounts-container h1 { margin: 0; padding-top: 100px; }
+.no-accounts-container p { width: 260px; }
+.no-accounts-container button {
+    display: inline-block; cursor: pointer; padding: 3px 8px 0; height: 20px;
+    background: #424242; box-shadow: 2px 2px 8px #111; border: none; letter-spacing: .02em;
+    margin-left: 4px; position: relative; user-select: none; color: #ccc;
+}
+>>>>>>> Stashed changes
