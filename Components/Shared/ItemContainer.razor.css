@@ -7,6 +7,9 @@
     border-top-color: #555;
     padding-top: 5px;
     margin-bottom:5px;
+
+    /* Center container tracks inside available width */
+    justify-content: center;
 }
 
     .item-section.no-padding {
@@ -52,4 +55,8 @@
 .summarized-item > :global(.sprite-card) {
     position: relative;
     z-index: 1;
+}
+
+.item-section.equipment .item-container {
+    justify-content: flex-start;
 }
