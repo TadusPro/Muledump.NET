@@ -1,10 +1,12 @@
 @page "/"
 @page "/view-accounts"
+@using System.Diagnostics
 @inject Services.AccountService AccountSvc
 @inject Services.RotmgApiService RotmgApiSvc
 @inject Services.ReloadQueueService ReloadQueue
 @inject NavigationManager NavManager
 @inject Services.SettingsService SettingsManager
+@inject IJSRuntime JS
 @implements IDisposable
 
 @if (accounts == null)
@@ -23,16 +25,20 @@ else if (!accounts.Any())
 }
 else
 {
-    <div class="account-list">
+    <div class="account-grid" style="@($"--card-width: {Math.Clamp(SettingsManager.GlobalSettings.CardWidthPx, 100, 400)}px;")">
+        <div class="grid-sizer"></div>
+        <div class="gutter-sizer"></div>
         @foreach (var account in accounts)
         {
-            <AccountCard Account="@account"
-                         AccountData="@(accountDataMap.GetValueOrDefault(account.Id))"
-                         VO="@SettingsManager.GlobalOptions"
-                         Status="@(refreshStatus.ContainsKey(account.Id) ? refreshStatus[account.Id] : "Idle")"
-                         IsRefreshing="@(isRefreshing.Contains(account.Id))"
-                         OnRefreshClicked="@(() => RefreshAccountData(account))"
-                         OnDetailsClicked="@(() => ViewDetails(account.Id))" />
+            <div class="mule-item">
+                <AccountCard Account="@account"
+                             AccountData="@(accountDataMap.GetValueOrDefault(account.Id))"
+                             VO="@SettingsManager.GlobalOptions"
+                             Status="@(refreshStatus.ContainsKey(account.Id) ? refreshStatus[account.Id] : "Idle")"
+                             IsRefreshing="@(isRefreshing.Contains(account.Id))"
+                             OnRefreshClicked="@(() => RefreshAccountData(account))"
+                             OnDetailsClicked="@(() => ViewDetails(account.Id))" />
+            </div>
         }
     </div>
 }
@@ -42,16 +48,16 @@ else
     private Dictionary<Guid, MDTadusMod.Data.AccountData> accountDataMap = new();
     private Dictionary<Guid, string> refreshStatus = new();
     private HashSet<Guid> isRefreshing = new();
+    private bool _masonryInitialized;
+    private const bool DebugMasonry = true; // toggle on/off
 
     protected override async Task OnInitializedAsync()
     {
-        SettingsManager.OnChange += StateHasChanged;
-        
-        // Subscribe to ReloadQueue events
+        SettingsManager.OnChange += OnSettingsChanged;
         ReloadQueue.OnAccountDataUpdated += OnAccountDataUpdated;
         ReloadQueue.OnAccountStatusChanged += OnAccountStatusChanged;
         ReloadQueue.OnQueueChanged += OnQueueChanged;
-        
+
         accounts = await AccountSvc.GetAccountsAsync();
         if (accounts != null)
         {
@@ -67,24 +73,40 @@ else
         }
     }
 
-    private void GoToAddAccount()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        NavManager.NavigateTo("/settings/accounts/new");
+        if (accounts?.Any() == true)
+        {
+            if (firstRender || !_masonryInitialized)
+            {
+                // Let AccountCards run OnAfterRender/OnElementResized once
+                await Task.Delay(50);
+                await JS.InvokeVoidAsync("mdt.masonry.init", ".account-grid", 8);
+                _masonryInitialized = true;
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("mdt.masonry.relayout", ".account-grid");
+            }
+
+            if (DebugMasonry)
+            {
+                var report = await JS.InvokeAsync<string>("mdt.masonry.debug", ".account-grid", 100);
+                Debug.WriteLine(report);
+            }
+        }
+        await base.OnAfterRenderAsync(firstRender);
     }
 
-    private void ViewDetails(Guid accountId)
-    {
-        NavManager.NavigateTo($"/account-details/{accountId}");
-    }
+    private void GoToAddAccount() => NavManager.NavigateTo("/settings/accounts/new");
+    private void ViewDetails(Guid accountId) => NavManager.NavigateTo($"/account-details/{accountId}");
 
     private async Task RefreshAccountData(MDTadusMod.Data.Account account)
     {
         if (isRefreshing.Contains(account.Id)) return;
-
         isRefreshing.Add(account.Id);
         StateHasChanged();
 
-        // Queue the account reload - let ReloadQueueService handle everything
         ReloadQueue.QueueAccount(account.Id, account.Email, async () =>
         {
             var existingData = accountDataMap.GetValueOrDefault(account.Id);
@@ -94,34 +116,75 @@ else
         });
     }
 
-    // Add these event handlers
-    private void OnAccountDataUpdated(Guid accountId, MDTadusMod.Data.AccountData accountData)
+    private async void OnAccountDataUpdated(Guid accountId, MDTadusMod.Data.AccountData accountData)
     {
         accountDataMap[accountId] = accountData;
         isRefreshing.Remove(accountId);
-        InvokeAsync(StateHasChanged);
+        await InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            await JS.InvokeVoidAsync("mdt.masonry.relayout", ".account-grid");
+            if (DebugMasonry)
+            {
+                var report = await JS.InvokeAsync<string>("mdt.masonry.debug", ".account-grid", 100);
+                Debug.WriteLine(report);
+            }
+        });
     }
 
-    private void OnAccountStatusChanged(Guid accountId, string status)
+    private async void OnAccountStatusChanged(Guid accountId, string status)
     {
         refreshStatus[accountId] = status;
-        if (status == "Success" || status == "Error" || status == "Password Error")
-        {
+        if (status is "Success" or "Error" or "Password Error")
             isRefreshing.Remove(accountId);
-        }
-        InvokeAsync(StateHasChanged);
+
+        await InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            await JS.InvokeVoidAsync("mdt.masonry.relayout", ".account-grid");
+            if (DebugMasonry)
+            {
+                var report = await JS.InvokeAsync<string>("mdt.masonry.debug", ".account-grid", 100);
+                Debug.WriteLine(report);
+            }
+        });
     }
 
-    private void OnQueueChanged()
+    private async void OnQueueChanged()
     {
-        InvokeAsync(StateHasChanged);
+        await InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            await JS.InvokeVoidAsync("mdt.masonry.relayout", ".account-grid");
+            if (DebugMasonry)
+            {
+                var report = await JS.InvokeAsync<string>("mdt.masonry.debug", ".account-grid", 100);
+                Debug.WriteLine(report);
+            }
+        });
+    }
+
+    private async void OnSettingsChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            await JS.InvokeVoidAsync("mdt.masonry.refresh", ".account-grid", 8);
+            if (DebugMasonry)
+            {
+                var report = await JS.InvokeAsync<string>("mdt.masonry.debug", ".account-grid", 100);
+                Debug.WriteLine(report);
+            }
+        });
     }
 
     public void Dispose()
     {
-        SettingsManager.OnChange -= StateHasChanged;
+        SettingsManager.OnChange -= OnSettingsChanged;
         ReloadQueue.OnAccountDataUpdated -= OnAccountDataUpdated;
         ReloadQueue.OnAccountStatusChanged -= OnAccountStatusChanged;
         ReloadQueue.OnQueueChanged -= OnQueueChanged;
+
+        try { JS.InvokeVoidAsync("mdt.masonry.destroy", ".account-grid"); } catch { }
     }
 }

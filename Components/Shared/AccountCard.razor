@@ -404,14 +404,12 @@
 
         var somethingChanged = false;
 
-        // --- Character Row Calculation ---
         if (VO.Characters && bodyWidth > 0)
         {
             int newEffectiveLength;
 
             if (AccountData?.Characters?.Any() == true)
             {
-                // Use global per-column width
                 var cardWidth = (double)Math.Clamp(_cardWidthPx, 100, 400);
                 const double gap = 0;
                 const double safetyMargin = 20;
@@ -424,7 +422,6 @@
             }
             else
             {
-                // If there are no characters, default the length to 1.
                 newEffectiveLength = 1;
             }
 
@@ -438,6 +435,8 @@
         if (somethingChanged)
         {
             StateHasChanged();
+            // Ask Masonry to re-measure item widths after this card changed
+            try { _ = JSRuntime.InvokeVoidAsync("mdt.masonry.relayout", ".account-grid"); } catch { }
         }
     }
 
