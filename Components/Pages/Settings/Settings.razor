@@ -17,10 +17,22 @@
         {
             <div class="setting-item">
                 <label for="@property.Name">@GetSettingLabel(property)</label>
-                <input type="checkbox"
-                       id="@property.Name"
-                       checked="@((bool)property.GetValue(SettingsManager.GlobalSettings))"
-                       @onchange="(e) => UpdateGlobalSetting(property.Name, e.Value)" />
+
+                @if (property.PropertyType == typeof(int))
+                {
+                    <input type="number"
+                           id="@property.Name"
+                           value="@Convert.ToInt32(property.GetValue(SettingsManager.GlobalSettings) ?? 0)"
+                           min="100" max="400" step="10"
+                           @onchange="(e) => UpdateGlobalSetting(property.Name, e.Value)" />
+                }
+                else if (property.PropertyType == typeof(bool))
+                {
+                    <input type="checkbox"
+                           id="@property.Name"
+                           checked="@((bool)property.GetValue(SettingsManager.GlobalSettings))"
+                           @onchange="(e) => UpdateGlobalSetting(property.Name, e.Value)" />
+                }
             </div>
         }
     </div>
@@ -36,27 +48,36 @@
     {
         return typeof(GlobalSettings)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.CanRead && p.CanWrite && p.GetCustomAttribute<JsonIgnoreAttribute>() == null && p.PropertyType == typeof(bool));
+            .Where(p => p.CanRead
+                        && p.CanWrite
+                        && p.GetCustomAttribute<JsonIgnoreAttribute>() == null
+                        && (p.PropertyType == typeof(bool) || p.PropertyType == typeof(int)));
     }
 
     private string GetSettingLabel(PropertyInfo property)
     {
-        // Use the description from the attribute as the primary label text.
         var description = property.GetCustomAttribute<SettingDescriptionAttribute>()?.Description;
-        if (!string.IsNullOrEmpty(description))
-        {
-            return description;
-        }
-
-        // Fallback for properties without a description attribute.
+        if (!string.IsNullOrEmpty(description)) return description;
         return System.Text.RegularExpressions.Regex.Replace(property.Name, "(\\B[A-Z])", " $1");
     }
 
     private void UpdateGlobalSetting(string propertyName, object value)
     {
-        if (value is bool boolValue)
+        var prop = typeof(GlobalSettings).GetProperty(propertyName);
+        if (prop == null) return;
+
+        if (prop.PropertyType == typeof(bool))
         {
+            var boolValue = value is bool b ? b : bool.TryParse(value?.ToString(), out var bv) && bv;
             SettingsManager.UpdateGlobalSetting(propertyName, boolValue);
+        }
+        else if (prop.PropertyType == typeof(int))
+        {
+            if (!int.TryParse(value?.ToString(), out var intValue))
+                intValue = Convert.ToInt32(prop.GetValue(SettingsManager.GlobalSettings) ?? 0);
+
+            intValue = Math.Clamp(intValue, 100, 400);
+            SettingsManager.UpdateGlobalSetting(propertyName, intValue);
         }
     }
 

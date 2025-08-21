@@ -12,6 +12,9 @@ public class GlobalSettings
     
     [SettingDescription("Automatically check for application updates.")]
     public bool CheckForUpdates { get; set; } = true;
+
+    [SettingDescription("Pixel width of one card/container column. Affects how many fit per row.")]
+    public int CardWidthPx { get; set; } = 180;
 }
 
 [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]

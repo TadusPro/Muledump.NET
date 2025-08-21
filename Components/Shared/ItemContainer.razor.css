@@ -1,6 +1,6 @@
 ﻿.item-section {
     display: grid;
-    grid-template-columns: repeat(var(--char-row-length, 8), 180px);
+    grid-template-columns: repeat(var(--char-row-length, 8), var(--card-width, 180px));
     gap: 0px;
     border-top: solid;
     border-top-width: 2px;
@@ -12,15 +12,15 @@
     .item-section.no-padding {
         border: none;
         gap: 0;
-        grid-template-columns: repeat(1, 180px);
+        grid-template-columns: repeat(1, var(--card-width, 180px));
     }
 
     .item-section.equipment {
-        grid-template-columns: repeat(1, 180px);
+        grid-template-columns: repeat(1, var(--card-width, 180px));
     }
 
 .item-container{
-    width: 180px;
+    width: var(--card-width, 180px);
     overflow: hidden;
     display: flex;
     flex-wrap: wrap;
@@ -36,8 +36,8 @@
     justify-content: flex-start;
     padding-left: 2px;
     padding-bottom: 5px;
-    /* Limit max width: char-row-length * 180px (chest width) */
-    max-width: calc(var(--char-row-length, 8) * 180px);
+    /* Limit max width: char-row-length * card-width */
+    max-width: calc(var(--char-row-length, 8) * var(--card-width, 180px));
 }
 
 .summarized-item {

@@ -11,7 +11,7 @@
     display: flex;
     align-items: center;
     white-space: nowrap;
-    width: 180px;
+    width: var(--card-width, 180px);
 }
 
     .chdesc  div{
@@ -26,7 +26,7 @@
     }
 
 .stats {
-    width: 180px;
+    width: var(--card-width, 180px);
     margin: 4px 0;
 }
     .stats td {
@@ -48,14 +48,14 @@
 }
 
 .items {
-    width: 185px;
+    width: calc(var(--card-width, 180px) + 5px); /* was 185px */
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
 .itemsc {
-    width: 176px;
+    width: calc(var(--card-width, 180px) - 4px); /* was 176px */
     margin: 2px 0 2px 0;
     padding: 0;
     overflow: hidden;
@@ -70,7 +70,7 @@
 
 .pcstats {
     overflow: hidden;
-    width: 180px;
+    width: var(--card-width, 180px);
     margin: 4px 0;
 }
 
