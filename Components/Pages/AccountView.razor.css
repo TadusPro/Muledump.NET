@@ -1,0 +1,9 @@
+.shiny-grid {
+    display:flex;
+    flex-wrap:wrap;
+    gap:4px;
+    margin:6px 0 12px 0;
+}
+.shiny-grid.missing {
+    opacity:.85;
+}

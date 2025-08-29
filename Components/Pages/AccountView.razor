@@ -1,0 +1,195 @@
+@page "/accounts/{AccountId:guid}"
+@using MDTadusMod.Data
+@inject Services.AccountService AccountSvc
+@inject MDTadusMod.Services.AssetService AssetService
+@inject NavigationManager NavManager
+
+<h3>Account View</h3>
+
+@if (loading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (notFound)
+{
+    <p><strong>Account not found.</strong></p>
+}
+else
+{
+    <h4>@(accountData?.Name ?? account?.Email)</h4>
+
+    @if (accountData == null)
+    {
+        <p>No saved data yet. Refresh from the main view.</p>
+    }
+    else
+    {
+        <div class="summary">
+            <p>
+                Fame: @accountData.Fame |
+                Credits: @accountData.Credits |
+                Stars: @accountData.Star |
+                Characters: @accountData.Characters.Count / @accountData.MaxNumChars
+            </p>
+            <p>
+                Guild: @(string.IsNullOrEmpty(accountData.GuildName) ? "None" : $"{accountData.GuildName} (Rank {accountData.GuildRank})")
+            </p>
+        </div>
+
+        <details open>
+            <summary style="cursor:pointer;font-weight:bold;">Shiny Items Progress (@ownedShinyCount / @totalShinyCount)</summary>
+            @if (shinyLoading)
+            {
+                <p><em>Scanning shiny items...</em></p>
+            }
+            else if (totalShinyCount == 0)
+            {
+                <p>No shiny item definitions found.</p>
+            }
+            else
+            {
+                <p>
+                    Owned: @ownedShinyCount |
+                    Missing: @missingShinyCount
+                    (@(ownedShinyCount * 100 / (totalShinyCount == 0 ? 1 : totalShinyCount))% complete)
+                </p>
+
+                <details open>
+                    <summary style="cursor:pointer;">Owned (@ownedShinyCount)</summary>
+                    @if (ownedShinyIds.Any())
+                    {
+                        <div class="shiny-grid">
+                            @foreach (var id in ownedShinyIds.OrderBy(i => i))
+                            {
+                                <SpriteCard Type="@id" />
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p>None owned yet.</p>
+                    }
+                </details>
+
+                <details>
+                    <summary style="cursor:pointer;">Missing (@missingShinyCount) (sorted by CollectionIcon)</summary>
+                    @if (orderedMissingShinyIds.Any())
+                    {
+                        <div class="shiny-grid missing">
+                            @foreach (var id in orderedMissingShinyIds)
+                            {
+                                <SpriteCard Type="@id" />
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p>All collected. Nice!</p>
+                    }
+                </details>
+            }
+        </details>
+    }
+
+    <button @onclick="Back">Back</button>
+}
+
+@code {
+    [Parameter] public Guid AccountId { get; set; }
+
+    private Account account;
+    private AccountData accountData;
+    private bool loading = true;
+    private bool notFound;
+
+    // Shiny tracking
+    private bool shinyLoading = true;
+    private HashSet<int> allShinyIds = new();
+    private HashSet<int> ownedShinyIds = new();
+    private HashSet<int> missingShinyIds = new();
+    private int ownedShinyCount;
+    private int missingShinyCount;
+    private int totalShinyCount;
+
+    // Flat, ordered missing list (sorted by CollectionIcon then TypeId)
+    private List<int> orderedMissingShinyIds = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var accounts = await AccountSvc.GetAccountsAsync();
+        account = accounts.FirstOrDefault(a => a.Id == AccountId);
+        if (account == null)
+        {
+            notFound = true;
+            loading = false;
+            return;
+        }
+
+        accountData = await AccountSvc.GetAccountDataAsync(AccountId);
+        loading = false;
+
+        if (accountData != null)
+        {
+            _ = LoadShinyAsync();
+        }
+    }
+
+    private async Task LoadShinyAsync()
+    {
+        try
+        {
+            shinyLoading = true;
+            allShinyIds = await AssetService.GetAllShinyItemIdsAsync();
+
+            var ownedItemIds = new HashSet<int>();
+
+            if (accountData.Characters != null)
+            {
+                foreach (var ch in accountData.Characters)
+                {
+                    if (ch.EquipmentList != null)
+                        foreach (var it in ch.EquipmentList)
+                            if (it != null) ownedItemIds.Add(it.Id);
+                }
+            }
+
+            if (accountData.Vault?.Items != null)
+                foreach (var it in accountData.Vault.Items) ownedItemIds.Add(it.Id);
+            if (accountData.MaterialStorage?.Items != null)
+                foreach (var it in accountData.MaterialStorage.Items) ownedItemIds.Add(it.Id);
+            if (accountData.Gifts != null)
+                foreach (var it in accountData.Gifts) ownedItemIds.Add(it.Id);
+            if (accountData.TemporaryGifts != null)
+                foreach (var it in accountData.TemporaryGifts) ownedItemIds.Add(it.Id);
+            if (accountData.Potions != null)
+                foreach (var it in accountData.Potions) ownedItemIds.Add(it.Id);
+            if (accountData.SeasonalPetInventory?.Items != null)
+                foreach (var it in accountData.SeasonalPetInventory.Items) ownedItemIds.Add(it.Id);
+            if (accountData.NonSeasonalPetInventory?.Items != null)
+                foreach (var it in accountData.NonSeasonalPetInventory.Items) ownedItemIds.Add(it.Id);
+
+            ownedShinyIds = new HashSet<int>(ownedItemIds.Where(id => allShinyIds.Contains(id)));
+            missingShinyIds = new HashSet<int>(allShinyIds.Where(id => !ownedShinyIds.Contains(id)));
+
+            ownedShinyCount = ownedShinyIds.Count;
+            missingShinyCount = missingShinyIds.Count;
+            totalShinyCount = allShinyIds.Count;
+
+            // Fetch collection icons and sort missing list
+            var collInfo = await AssetService.GetEquipmentCollectionInfoAsync(missingShinyIds);
+            var iconMap = collInfo.ToDictionary(i => i.TypeId, i => i.CollectionIcon);
+
+            orderedMissingShinyIds = missingShinyIds
+                .OrderBy(id => iconMap.GetValueOrDefault(id, int.MaxValue)) // unknown icons last
+                .ThenBy(id => id)
+                .ToList();
+        }
+        finally
+        {
+            shinyLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void Back() => NavManager.NavigateTo("/");
+}

@@ -33,7 +33,12 @@
             }
             @if (VO.IGN)
             {
-                <p class="mule-name" style="grid-column: 2;">@(AccountData?.Name ?? Account.Email)</p>
+                <p class="mule-name"
+                   style="grid-column: 2;"
+                   title="Ctrl+Click to open full account view"
+                   @onclick="OnNameClicked">
+                    @(AccountData?.Name ?? Account.Email)
+                </p>
             }
             <div class="header-actions" style="grid-column: 3;">
                 <button @onclick="EditAccount" title="Edit account">≡</button>
@@ -448,5 +453,14 @@
             await JSRuntime.InvokeVoidAsync("unobserveResize", _muleContainer);
         }
         _dotNetObjectReference?.Dispose();
+    }
+
+    private void OnNameClicked(MouseEventArgs e)
+    {
+        // Navigate only when Ctrl key is pressed
+        if (e.CtrlKey && Account?.Id != Guid.Empty)
+        {
+            NavManager.NavigateTo($"/accounts/{Account.Id}");
+        }
     }
 }

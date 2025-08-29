@@ -8,7 +8,7 @@ using System.Reflection;
 
 namespace MDTadusMod.Services
 {
-    public class AssetService
+    public partial class AssetService
     {
         // --- static shared state (unchanged pattern) ---
         private static Task? _initializationTask;
