@@ -1,0 +1,43 @@
+@page "/diagnostics"
+@inject ILogBuffer LogBuffer
+
+<h3>Diagnostics</h3>
+
+<div class="toolbar">
+    <button @onclick="Refresh">Refresh</button>
+    <button @onclick="ShareAsync">Share Logs</button>
+</div>
+
+<p>Entries: @lines.Count @lastRefreshedText</p>
+
+<pre style="white-space:pre-wrap; max-height:60vh; overflow:auto; font-size:.8rem;">
+@string.Join("\n", lines)
+</pre>
+
+@code {
+    List<string> lines = new();
+    DateTimeOffset lastRefreshed;
+
+    protected override void OnInitialized()
+    {
+        Refresh();
+    }
+
+    void Refresh()
+    {
+        lines = LogBuffer.Snapshot().ToList();
+        lastRefreshed = DateTimeOffset.Now;
+    }
+
+    string lastRefreshedText => $"(updated {lastRefreshed:HH:mm:ss})";
+
+    async Task ShareAsync()
+    {
+        var file = await LogBuffer.PersistAsync();
+        await Share.Default.RequestAsync(new ShareFileRequest
+        {
+            Title = "App Logs",
+            File = new ShareFile(file)
+        });
+    }
+}

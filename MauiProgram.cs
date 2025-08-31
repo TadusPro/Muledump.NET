@@ -2,6 +2,9 @@
 using MDTadusMod.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Components.WebView.Maui;
+using System.Net.Http;
+using System.Text;
+using System.Diagnostics;
 #if WINDOWS
 using Microsoft.Win32;
 #endif
@@ -43,12 +46,10 @@ namespace MDTadusMod
     {
         public static MauiApp CreateMauiApp()
         {
-            // --- NEW: resolve data directory first and set WebView2 env var ---
             var dataDir = AppPaths.Resolve();
 #if WINDOWS
             var wv2 = Path.Combine(dataDir, "WebView2");
             Directory.CreateDirectory(wv2);
-            // Tell WebView2 to use a writable location
             Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", wv2, EnvironmentVariableTarget.Process);
 #endif
             var appPaths = new AppPaths(dataDir);
@@ -64,13 +65,9 @@ namespace MDTadusMod
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
-            builder.Logging.AddDebug();
-
-            // Avoid crashing on background task exceptions
-            TaskScheduler.UnobservedTaskException += (s, e) => { e.SetObserved(); };
-            AppDomain.CurrentDomain.UnhandledException += (s, e) => { /* optionally log */ };
 #endif
 
+            // Core services
             builder.Services.AddSingleton<AccountService>();
             builder.Services.AddSingleton<RotmgApiService>();
             builder.Services.AddSingleton<AssetService>();
@@ -79,10 +76,66 @@ namespace MDTadusMod
             builder.Services.AddSingleton<ReloadQueueService>();
             builder.Services.AddHttpClient();
 
-            // Add logging configuration
+            // Logging buffer first
+            builder.Services.AddSingleton<ILogBuffer, LogBuffer>();
+            // Register our custom provider (picked up automatically)
+            builder.Services.AddSingleton<ILoggerProvider, MDTadusMod.Services.BufferLoggerProvider>();
+
+            // Filters
             builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
 
-            return builder.Build();
+#if DEBUG
+            builder.Logging
+                .AddDebug()
+#if WINDOWS
+                .AddConsole()
+#endif
+                .SetMinimumLevel(LogLevel.Debug); // allow debug lines if you want them
+#else
+            builder.Logging
+                .SetMinimumLevel(LogLevel.Information);
+#endif
+
+            // HTTP logging handler (optional – currently not used by RotmgApiService)
+            builder.Services.AddTransient<LoggingHttpMessageHandler>();
+            builder.Services.AddHttpClient<IApiClient, ApiClient>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.example.com/");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            }).AddHttpMessageHandler<LoggingHttpMessageHandler>();
+
+            RegisterGlobalExceptionHooks(builder.Services);
+
+            var app = builder.Build();
+
+            // Add Debug -> buffer listener (after DI ready)
+            var logBuffer = app.Services.GetRequiredService<ILogBuffer>();
+            Trace.Listeners.Add(new MDTadusMod.Services.DebugForwardingTraceListener(logBuffer));
+
+            return app;
+        }
+
+        private static void RegisterGlobalExceptionHooks(IServiceCollection services)
+        {
+#if DEBUG
+            // Prevent crash on background exceptions in debug (already present)
+            TaskScheduler.UnobservedTaskException += (s, e) => { e.SetObserved(); };
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => { };
+#endif
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                if (services.BuildServiceProvider().GetService<ILogBuffer>() is { } lb)
+                    lb.LogCritical("AppDomain.UnhandledException", e.ExceptionObject as Exception);
+            };
+
+            TaskScheduler.UnobservedTaskException += (s, e) =>
+            {
+                if (services.BuildServiceProvider().GetService<ILogBuffer>() is { } lb)
+                {
+                    lb.LogError("TaskScheduler.UnobservedTaskException", e.Exception);
+                    e.SetObserved();
+                }
+            };
         }
     }
 }
