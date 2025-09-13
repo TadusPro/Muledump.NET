@@ -368,14 +368,7 @@
 
     private string GetGoalKey(FameBonus bonus, Dictionary<string, int> statNameToIdMap)
     {
-        var statCond = bonus.Condition?.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c.stat));
-        if (statCond != null)
-            return $"stat:{statCond.stat}".ToLowerInvariant();
-
-        if (!string.IsNullOrWhiteSpace(bonus.DisplayCategory))
-            return $"cat:{bonus.DisplayCategory}".ToLowerInvariant();
-        if (!string.IsNullOrWhiteSpace(bonus.DisplayName))
-            return $"name:{bonus.DisplayName}".ToLowerInvariant();
+        // De-duplicate strictly by unique bonus code so multi-condition relative bonuses aren’t overridden.
         return $"code:{bonus.code}";
     }
 
