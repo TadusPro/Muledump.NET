@@ -81,7 +81,10 @@ namespace MDTadusMod
             // Register our custom provider (picked up automatically)
             builder.Services.AddSingleton<ILoggerProvider, MDTadusMod.Services.BufferLoggerProvider>();
 
-            // Filters
+            // Ensure the in-memory buffer captures everything (even in Release)
+            builder.Logging.AddFilter<MDTadusMod.Services.BufferLoggerProvider>(null, LogLevel.Debug);
+
+            // Keep other providers at your desired levels
             builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
 
 #if DEBUG
@@ -108,9 +111,10 @@ namespace MDTadusMod
 
             var app = builder.Build();
 
-            // Add Debug -> buffer listener (after DI ready)
+            // Add Debug/Trace -> buffer listener (after DI ready)
             var logBuffer = app.Services.GetRequiredService<ILogBuffer>();
-            Trace.Listeners.Add(new MDTadusMod.Services.DebugForwardingTraceListener(logBuffer));
+            var forwarding = new MDTadusMod.Services.DebugForwardingTraceListener(logBuffer);
+            System.Diagnostics.Trace.Listeners.Add(forwarding);
 
             return app;
         }

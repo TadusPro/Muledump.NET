@@ -30,8 +30,13 @@ public sealed class DebugForwardingTraceListener : TraceListener
             var full = _partial + (message ?? string.Empty);
             _partial = string.Empty;
             if (string.IsNullOrWhiteSpace(full)) return;
-            // You can change LogLevel.Debug to Information if you want them visible when min level = Information
-            _buffer.Log(LogLevel.Debug, full, scope: "Debug");
+
+#if DEBUG
+            var level = LogLevel.Debug;
+#else
+            var level = LogLevel.Information; // promote in Release so they pass the filter
+#endif
+            _buffer.Log(level, full, scope: "Debug");
         }
     }
 }

@@ -1,0 +1,58 @@
+@page "/settings/diagnostics"
+@inject ILogBuffer LogBuffer
+
+<h3>Diagnostics</h3>
+
+<div class="toolbar">
+    <button @onclick="Refresh">Refresh</button>
+    <button @onclick="ShareAsync">Share Logs</button>
+    <label style="margin-left:1rem;">
+        <input type="checkbox" @bind="includeRenderer" />
+        Include RenderTree.Renderer logs
+    </label>
+</div>
+
+<p>Entries: @FilteredCount @lastRefreshedText</p>
+
+<pre style="white-space:pre-wrap; max-height:60vh; overflow:auto; font-size:.8rem;">
+@string.Join("\n", FilteredLines)
+</pre>
+
+@code {
+    // All lines captured in buffer (unfiltered)
+    List<string> allLines = new();
+    DateTimeOffset lastRefreshed;
+    bool includeRenderer = false;
+
+    protected override void OnInitialized()
+    {
+        Refresh();
+    }
+
+    void Refresh()
+    {
+        allLines = LogBuffer.Snapshot().ToList();
+        lastRefreshed = DateTimeOffset.Now;
+    }
+
+    string lastRefreshedText => $"(updated {lastRefreshed:HH:mm:ss})";
+
+    // View-time filtering (fast and simple)
+    static bool IsRendererLine(string line) =>
+        line?.Contains("Microsoft.AspNetCore.Components.RenderTree.Renderer", StringComparison.Ordinal) == true;
+
+    IEnumerable<string> FilteredLines =>
+        includeRenderer ? allLines : allLines.Where(l => !IsRendererLine(l));
+
+    int FilteredCount => includeRenderer ? allLines.Count : allLines.Count(l => !IsRendererLine(l));
+
+    async Task ShareAsync()
+    {
+        var file = await LogBuffer.PersistAsync();
+        await Share.Default.RequestAsync(new ShareFileRequest
+        {
+            Title = "App Logs",
+            File = new ShareFile(file)
+        });
+    }
+}

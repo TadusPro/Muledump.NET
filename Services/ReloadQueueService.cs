@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using MDTadusMod.Data;
+using Microsoft.Extensions.Logging;
 
 namespace MDTadusMod.Services
 {
@@ -16,6 +16,8 @@ namespace MDTadusMod.Services
 
     public class ReloadQueueService
     {
+        private readonly ILogger<ReloadQueueService> _logger;
+
         private readonly ConcurrentQueue<ReloadTask> _queue = new();
         private readonly SemaphoreSlim _semaphore = new(1, 1);
         private CancellationTokenSource? _cancellationTokenSource;
@@ -41,6 +43,10 @@ namespace MDTadusMod.Services
         public event Action<Guid, string>? OnAccountStatusChanged;
         public event Action<DateTime?>? OnLockoutUntilChanged;
 
+        public ReloadQueueService(ILogger<ReloadQueueService> logger)
+        {
+            _logger = logger;
+        }
 
         public bool IsProcessing => _isProcessing;
         public int QueueCount => _queue.Count;
@@ -99,13 +105,18 @@ namespace MDTadusMod.Services
                 }
 
                 _runId = Guid.NewGuid();
+                using var runScope = _logger.BeginScope(new System.Collections.Generic.Dictionary<string, object>
+                {
+                    ["RunId"] = _runId
+                });
+
                 Log($"=== PROCESS START (RunId={_runId}) QueueCount={_queue.Count} ===");
 
                 // If we're still in a lockout, schedule resume and exit early.
                 if (_loginLimitUntil is DateTime until && DateTime.UtcNow < until)
                 {
                     var wait = until - DateTime.UtcNow;
-                    Log($"Login limit in effect. Pausing for {wait.TotalSeconds:F0}s (until {until:O}).");
+                    Log($"Login limit in effect. Pausing for {wait.TotalSeconds:F0}s (until {until:O}).", LogLevel.Warning);
                     ScheduleResume(wait, "initial-lockout");
                     return; // finally will release semaphore
                 }
@@ -169,25 +180,25 @@ namespace MDTadusMod.Services
                             {
                                 errorCount++;
                                 OnAccountStatusChanged?.Invoke(task.AccountId, "Password Error");
-                                Log($"Password error for {task.AccountEmail}");
+                                Log($"Password error for {task.AccountEmail}", LogLevel.Warning);
                             }
                             else
                             {
                                 errorCount++;
                                 OnAccountStatusChanged?.Invoke(task.AccountId, $"Error: {accountData.LastErrorMessage}");
-                                Log($"Error for {task.AccountEmail}: {accountData.LastErrorMessage}");
+                                Log($"Error for {task.AccountEmail}: {accountData.LastErrorMessage}", LogLevel.Warning);
                             }
                         }
                         else
                         {
                             errorCount++;
                             OnAccountStatusChanged?.Invoke(task.AccountId, "Error");
-                            Log($"Null data for {task.AccountEmail}");
+                            Log($"Null data for {task.AccountEmail}", LogLevel.Warning);
                         }
                     }
                     catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                     {
-                        Log($"HTTP 429 for {task.AccountEmail}. Requeue and sleep 5s. Ex={ex.Message}");
+                        Log($"HTTP 429 for {task.AccountEmail}. Requeue and sleep 5s. Ex={ex.Message}", LogLevel.Warning);
                         await Task.Delay(5000, cancellationToken);
                         _queue.Enqueue(task);
                         OnQueueChanged?.Invoke();
@@ -235,7 +246,7 @@ namespace MDTadusMod.Services
             _loginLimitUntil = DateTime.UtcNow.AddMinutes(5);
             OnLockoutUntilChanged?.Invoke(_loginLimitUntil);
             var until = _loginLimitUntil.Value;
-            Log($"LOCKOUT '{message}'. Requeued {task.AccountEmail}. Pausing ALL until {until:O} (~{(until - DateTime.UtcNow).TotalSeconds:F0}s). Remaining={_queue.Count}");
+            Log($"LOCKOUT '{message}'. Requeued {task.AccountEmail}. Pausing ALL until {until:O} (~{(until - DateTime.UtcNow).TotalSeconds:F0}s). Remaining={_queue.Count}", LogLevel.Warning);
             OnAccountStatusChanged?.Invoke(task.AccountId, "Login limit - paused");
 
             ScheduleResume(TimeSpan.FromMinutes(5), "lockout-detected");
@@ -277,18 +288,30 @@ namespace MDTadusMod.Services
             });
         }
 
-        private void Log(string message)
+        private void Log(string message, LogLevel level = LogLevel.Information)
         {
-            var line = $"[{DateTime.UtcNow:O}] [ReloadQueue] [Run:{_runId}] {message}";
-            OnStatusChanged?.Invoke(line);
-            Debug.WriteLine(line);
+            var stamped = $"[{DateTime.UtcNow:O}] [ReloadQueue] [Run:{_runId}] {message}";
+            OnStatusChanged?.Invoke(stamped);
+            switch (level)
+            {
+                case LogLevel.Warning:
+                    _logger.LogWarning("{Message}", stamped);
+                    break;
+                case LogLevel.Error:
+                case LogLevel.Critical:
+                    _logger.LogError("{Message}", stamped);
+                    break;
+                default:
+                    _logger.LogInformation("{Message}", stamped);
+                    break;
+            }
         }
 
         private void LogException(string context, Exception ex)
         {
-            var line = $"[{DateTime.UtcNow:O}] [ReloadQueue] [Run:{_runId}] {context}: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}";
-            OnStatusChanged?.Invoke(line);
-            Debug.WriteLine(line);
+            var uiLine = $"[{DateTime.UtcNow:O}] [ReloadQueue] [Run:{_runId}] {context}: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}";
+            OnStatusChanged?.Invoke(uiLine);
+            _logger.LogError(ex, "[ReloadQueue] [Run:{RunId}] {Context}", _runId, context);
         }
 
         private class ReloadTask
