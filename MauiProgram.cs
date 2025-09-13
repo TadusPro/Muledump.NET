@@ -91,9 +91,15 @@ namespace MDTadusMod
             builder.Logging
                 .AddDebug()
 #if WINDOWS
-                .AddConsole()
+                // Compact timestamp in Output window: 034337 (HHmmss)
+                .AddSimpleConsole(o =>
+                {
+                    o.TimestampFormat = "HHmmss ";
+                    o.UseUtcTimestamp = false;   // set true if you prefer UTC
+                    o.SingleLine = true;
+                })
 #endif
-                .SetMinimumLevel(LogLevel.Debug); // allow debug lines if you want them
+                .SetMinimumLevel(LogLevel.Debug);
 #else
             builder.Logging
                 .SetMinimumLevel(LogLevel.Information);
