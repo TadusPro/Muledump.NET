@@ -13,10 +13,28 @@ public sealed class LogBuffer : ILogBuffer
 
     public void Log(LogLevel level, string message, Exception? ex = null, string? scope = null)
     {
-        var line = $"{DateTimeOffset.UtcNow:O} [{level}]"
-                   + (scope is null ? "" : $" ({scope})")
-                   + $" {message}"
-                   + (ex is null ? "" : $" :: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
+        // Compact local-time timestamp (HHmmss)
+        var ts = DateTime.Now.ToString("hh:mm:ss");
+
+        var sb = new StringBuilder()
+            .Append('[').Append(ts).Append(']')
+            .Append(' ')
+            .Append('[').Append(level).Append(']');
+
+        if (!string.IsNullOrEmpty(scope))
+            sb.Append(" [").Append(scope).Append(']');
+
+        sb.Append(' ').Append(message);
+
+        if (ex != null)
+        {
+            sb.Append(" :: ")
+              .Append(ex.GetType().Name).Append(": ").Append(ex.Message)
+              .Append('\n').Append(ex.StackTrace);
+        }
+
+        var line = sb.ToString();
+
         _entries.Enqueue(line);
         while (_entries.Count > MaxEntries && _entries.TryDequeue(out _)) { }
 
