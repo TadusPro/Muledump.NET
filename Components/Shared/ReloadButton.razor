@@ -25,7 +25,7 @@
                 }
                 else if (ReloadQueue.IsProcessing)
                 {
-                    <text>@ReloadQueue.QueueCount Tasks Remaining</text>
+                    <text>@(ReloadQueue.QueueCount + 1) Tasks Remaining</text>
                 }
                 else
                 {
