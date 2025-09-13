@@ -3,19 +3,25 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Web;
 using System.Linq;
 using System.Text;
+using System.Globalization;
+using Microsoft.Extensions.Logging;
 
 namespace MDTadusMod.Services
 {
     public class RotmgApiService
     {
         private readonly HttpClient _httpClient;
+        private readonly ILogger<RotmgApiService> _logger;
         private const string ClientToken = "0";
 
-        public RotmgApiService(HttpClient httpClient) => _httpClient = httpClient;
+        public RotmgApiService(HttpClient httpClient, ILogger<RotmgApiService> logger)
+        {
+            _httpClient = httpClient;
+            _logger = logger;
+        }
 
         private static bool IsLockout(string s) =>
             !string.IsNullOrEmpty(s) &&
@@ -23,20 +29,21 @@ namespace MDTadusMod.Services
 
         public async Task<AccountData> GetAccountDataAsync(Account account, AccountData existingAccountData = null)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine($"Starting data fetch for {account.Email}...");
-            
-            // Create a temporary object to hold new data.
+            using var scope = _logger.BeginScope(new Dictionary<string, object>
+            {
+                ["AccountId"] = account.Id,
+                ["AccountEmail"] = account.Email
+            });
+
+            Log($"Starting data fetch for {account.Email}...", LogLevel.Debug);
+
             var newAccountData = new AccountData { AccountId = account.Id };
-            
+
             var accessToken = await VerifyAccountAndGetToken(account, newAccountData);
 
-            // If password is wrong, return the original, unmodified data.
             if (newAccountData.PasswordError)
             {
-                sb.AppendLine($"Token verification failed: {newAccountData.LastErrorMessage}");
-                Debug.WriteLine(sb.ToString());
-                // Return the old data if it exists, otherwise the new object with the error.
+                Log($"Token verification failed: {newAccountData.LastErrorMessage}", LogLevel.Warning);
                 return existingAccountData ?? newAccountData;
             }
 
@@ -44,15 +51,15 @@ namespace MDTadusMod.Services
             {
                 if (IsLockout(newAccountData.LastErrorMessage))
                 {
-                    Debug.WriteLine($"Lockout detected in token step for {account.Email}: {newAccountData.LastErrorMessage}");
+                    Log($"Lockout detected in token step: {newAccountData.LastErrorMessage}", LogLevel.Warning);
                     throw new LoginLockoutException(newAccountData.LastErrorMessage);
                 }
-                // unchanged return:
-                Debug.WriteLine($"Token verification failed: {newAccountData.LastErrorMessage}");
+
+                Log($"Token verification failed: {newAccountData.LastErrorMessage}", LogLevel.Warning);
                 return existingAccountData ?? newAccountData;
             }
-            sb.AppendLine("Successfully obtained access token.");
 
+            Log("Access token obtained.", LogLevel.Debug);
 
             var charListResponse = await _httpClient.PostAsync("https://www.realmofthemadgod.com/char/list", new FormUrlEncodedContent(new []
             {
@@ -62,23 +69,19 @@ namespace MDTadusMod.Services
 
             if (charListResponse.IsSuccessStatusCode)
             {
-                sb.AppendLine("Successfully fetched character list.");
                 var content = await charListResponse.Content.ReadAsStringAsync();
-                // Parse the new data into our temporary object.
+                Log($"Fetched character list (len={content?.Length ?? 0}).", LogLevel.Debug);
                 ParseCharListXml(content, newAccountData);
             }
             else
             {
                 var errorMsg = $"Failed to fetch character list: {charListResponse.ReasonPhrase}";
-                sb.AppendLine(errorMsg);
                 newAccountData.LastErrorMessage = errorMsg;
-                // On failure, return the old data.
+                Log(errorMsg, LogLevel.Warning);
                 return existingAccountData ?? newAccountData;
             }
 
-            sb.AppendLine("Data fetch process finished.");
-            Debug.WriteLine(sb.ToString());
-            // On success, return the newly fetched data.
+            Log("Data fetch finished.", LogLevel.Debug);
             return newAccountData;
         }
 
@@ -92,14 +95,14 @@ namespace MDTadusMod.Services
             if (accountElement != null)
             {
                 accountData.Name = accountElement.Element("Name")?.Value;
-                accountData.Credits = (int?)accountElement.Element("Credits") ?? 0;
-                accountData.Fame = (int?)accountElement.Element("Fame") ?? 0;
-                accountData.MaxNumChars = (int?)charsElement.Attribute("maxNumChars") ?? 0;
+                accountData.Credits = SafeInt(accountElement.Element("Credits"));
+                accountData.Fame = SafeInt(accountElement.Element("Fame"));
+                accountData.MaxNumChars = SafeIntAttr(charsElement.Attribute("maxNumChars"));
                 var guildElement = accountElement.Element("Guild");
                 if (guildElement != null)
                 {
                     accountData.GuildName = guildElement.Element("Name")?.Value;
-                    accountData.GuildRank = (int?)guildElement.Element("Rank") ?? 0;
+                    accountData.GuildRank = SafeInt(guildElement.Element("Rank"));
                 }
 
                 // --- Class Stats & Stars ---
@@ -109,7 +112,7 @@ namespace MDTadusMod.Services
                     int totalStars = 0;
                     foreach (var classStats in statsElement.Elements("ClassStats"))
                     {
-                        var bestFame = (int?)classStats.Element("BestBaseFame") ?? 0;
+                        var bestFame = SafeInt(classStats.Element("BestBaseFame"));
                         totalStars += CalculateStars(bestFame);
                     }
                     accountData.Star = totalStars;
@@ -132,21 +135,21 @@ namespace MDTadusMod.Services
                 {
                     var character = new Character
                     {
-                        Id = (int)c.Attribute("id"),
-                        ObjectType = (int?)c.Element("ObjectType") ?? 0,
-                        Skin = (int?)c.Element("Texture") ?? 0,
-                        Level = (int?)c.Element("Level") ?? 0,
-                        Exp = (int?)c.Element("Exp") ?? 0,
-                        CurrentFame = (int?)c.Element("CurrentFame") ?? 0,
+                        Id = SafeIntAttr(c.Attribute("id")),
+                        ObjectType = SafeInt(c.Element("ObjectType")),
+                        Skin = SafeInt(c.Element("Texture")),
+                        Level = SafeInt(c.Element("Level")),
+                        Exp = SafeInt(c.Element("Exp")),
+                        CurrentFame = SafeInt(c.Element("CurrentFame")),
                         EquipQS = c.Element("EquipQS")?.Value,
-                        MaxHitPoints = (int?)c.Element("MaxHitPoints") ?? 0,
-                        MaxMagicPoints = (int?)c.Element("MaxMagicPoints") ?? 0,
-                        Attack = (int?)c.Element("Attack") ?? 0,
-                        Defense = (int?)c.Element("Defense") ?? 0,
-                        Speed = (int?)c.Element("Speed") ?? 0,
-                        Dexterity = (int?)c.Element("Dexterity") ?? 0,
-                        Vitality = (int?)c.Element("HpRegen") ?? 0,
-                        Wisdom = (int?)c.Element("MpRegen") ?? 0,
+                        MaxHitPoints = SafeInt(c.Element("MaxHitPoints")),
+                        MaxMagicPoints = SafeInt(c.Element("MaxMagicPoints")),
+                        Attack = SafeInt(c.Element("Attack")),
+                        Defense = SafeInt(c.Element("Defense")),
+                        Speed = SafeInt(c.Element("Speed")),
+                        Dexterity = SafeInt(c.Element("Dexterity")),
+                        Vitality = SafeInt(c.Element("HpRegen")),
+                        Wisdom = SafeInt(c.Element("MpRegen")),
                         PCStats = c.Element("PCStats")?.Value,
                         Seasonal = c.Element("Seasonal")?.Value == "True",
                         HasBackpack = c.Element("HasBackpack")?.Value == "1",
@@ -160,8 +163,11 @@ namespace MDTadusMod.Services
                         var itemStrings = equipmentString.Split(',').Where(s => !string.IsNullOrWhiteSpace(s));
                         foreach (var itemStr in itemStrings)
                         {
-                            var itemId = int.Parse(itemStr.Split('#')[0]);
-                            character.UniqueItemData.TryGetValue(itemId.ToString(), out var enchantList);
+                            var idPart = itemStr.Split('#')[0];
+                            if (!int.TryParse(idPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out var itemId))
+                                continue;
+
+                            character.UniqueItemData.TryGetValue(itemId.ToString(CultureInfo.InvariantCulture), out var enchantList);
                             character.EquipmentList.Add(new Item(itemId, enchantList?.FirstOrDefault()));
                         }
                     }
@@ -172,25 +178,25 @@ namespace MDTadusMod.Services
                     var petElement = c.Element("Pet");
                     if (petElement != null)
                     {
-                        var instanceId = (int)petElement.Attribute("instanceId");
+                        var instanceId = SafeIntAttr(petElement.Attribute("instanceId"));
                         if (existingPetInstanceIds.Add(instanceId)) // True if the pet is new
                         {
                             var pet = new Pet
                             {
                                 InstanceId = instanceId,
                                 Name = (string)petElement.Attribute("name"),
-                                ObjectType = (int)petElement.Attribute("type"),
-                                Rarity = (int)petElement.Attribute("rarity"),
-                                MaxAbilityPower = (int)petElement.Attribute("maxAbilityPower"),
-                                Skin = (int)petElement.Attribute("skin"),
-                                Shader = (int)petElement.Attribute("shader"),
+                                ObjectType = SafeIntAttr(petElement.Attribute("type")),
+                                Rarity = SafeIntAttr(petElement.Attribute("rarity")),
+                                MaxAbilityPower = SafeIntAttr(petElement.Attribute("maxAbilityPower")),
+                                Skin = SafeIntAttr(petElement.Attribute("skin")),
+                                Shader = SafeIntAttr(petElement.Attribute("shader")),
                                 CreatedOn = (string)petElement.Attribute("createdOn"),
                                 Abilities = petElement.Element("Abilities")?.Elements("Ability")
                                     .Select(ab => new PetAbility
                                     {
-                                        Type = (int)ab.Attribute("type"),
-                                        Power = (int)ab.Attribute("power"),
-                                        Points = (int)ab.Attribute("points")
+                                        Type = SafeIntAttr(ab.Attribute("type")),
+                                        Power = SafeIntAttr(ab.Attribute("power")),
+                                        Points = SafeIntAttr(ab.Attribute("points"))
                                     }).ToList() ?? new List<PetAbility>()
                             };
                             accountData.Pets.Add(pet);
@@ -218,9 +224,6 @@ namespace MDTadusMod.Services
                                     var invParts = invString.Split(';');
                                     if (invParts.Length >= 3)
                                     {
-                                        // invParts[0] = "0,8" (slot info)
-                                        // invParts[1] = "X" (delimiter)
-                                        // invParts[2] = actual items
                                         var itemsString = invParts[2];
                                         if (!string.IsNullOrEmpty(itemsString))
                                         {
@@ -228,7 +231,9 @@ namespace MDTadusMod.Services
                                             foreach (var itemStr in itemStrings)
                                             {
                                                 var parts = itemStr.Split('#');
-                                                var itemId = int.Parse(parts[0]);
+                                                if (!int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var itemId))
+                                                    continue;
+
                                                 string enchantData = null;
                                                 if (parts.Length > 1)
                                                 {
@@ -262,7 +267,9 @@ namespace MDTadusMod.Services
                     foreach (var itemStr in allVaultItems)
                     {
                         var parts = itemStr.Split('#');
-                        var itemId = int.Parse(parts[0]);
+                        if (!int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var itemId))
+                            continue;
+
                         string enchantData = null;
                         if (parts.Length > 1)
                         {
@@ -282,7 +289,9 @@ namespace MDTadusMod.Services
                     foreach (var itemStr in allMaterialItems)
                     {
                         var parts = itemStr.Split('#');
-                        var itemId = int.Parse(parts[0]);
+                        if (!int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var itemId))
+                            continue;
+
                         string enchantData = null;
                         if (parts.Length > 1)
                         {
@@ -300,7 +309,9 @@ namespace MDTadusMod.Services
                     foreach (var itemStr in itemStrings)
                     {
                         var parts = itemStr.Split('#');
-                        var itemId = int.Parse(parts[0]);
+                        if (!int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var itemId))
+                            continue;
+
                         string enchantData = null;
                         if (parts.Length > 1)
                         {
@@ -318,7 +329,9 @@ namespace MDTadusMod.Services
                     foreach (var itemStr in itemStrings)
                     {
                         var parts = itemStr.Split('#');
-                        var itemId = int.Parse(parts[0]);
+                        if (!int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var itemId))
+                            continue;
+
                         string enchantData = null;
                         if (parts.Length > 1)
                         {
@@ -332,11 +345,13 @@ namespace MDTadusMod.Services
                 var potionsElement = accountElement.Element("Potions");
                 if (potionsElement != null)
                 {
-                    var itemIds = potionsElement.Value.Split(',').Where(s => !string.IsNullOrWhiteSpace(s)).Select(int.Parse);
-                    foreach (var itemId in itemIds)
+                    var parts = potionsElement.Value.Split(',').Where(s => !string.IsNullOrWhiteSpace(s));
+                    foreach (var p in parts)
                     {
-                        // Potions don't have enchantments, so the second parameter is null.
-                        accountData.Potions.Add(new Item(itemId, null));
+                        if (int.TryParse(p, NumberStyles.Integer, CultureInfo.InvariantCulture, out var itemId))
+                        {
+                            accountData.Potions.Add(new Item(itemId, null));
+                        }
                     }
                 }
             }
@@ -390,6 +405,7 @@ namespace MDTadusMod.Services
             return uniqueItemData;
         }
 
+        // VerifyAccountAndGetToken(): keep structured debug, consider trimming content size if too verbose
         private async Task<string> VerifyAccountAndGetToken(Account account, AccountData accountData)
         {
             var uriBuilder = new UriBuilder("https://www.realmofthemadgod.com/account/verify");
@@ -400,7 +416,6 @@ namespace MDTadusMod.Services
             uriBuilder.Query = query.ToString();
 
             HttpContent content;
-
             if (account.Email.Contains(':') && !account.Email.Contains('@')) // steamworks
             {
                 content = new FormUrlEncodedContent(new[]
@@ -409,7 +424,7 @@ namespace MDTadusMod.Services
                     new KeyValuePair<string, string>("secret", account.Password)
                 });
             }
-            else // email
+            else
             {
                 content = new FormUrlEncodedContent(new[]
                 {
@@ -421,8 +436,8 @@ namespace MDTadusMod.Services
             var response = await _httpClient.PostAsync(uriBuilder.ToString(), content);
             var responseString = await response.Content.ReadAsStringAsync();
 
-            // Add more detailed logging
-            Debug.WriteLine($"Verify response for {account.Email}: Status={response.StatusCode}, Content={responseString}");
+            // Keep at Debug; flip to Trace or shorten if too noisy
+            _logger.LogDebug("Verify response Status={Status} Length={Length}", response.StatusCode, responseString?.Length ?? 0);
 
             try
             {
@@ -436,15 +451,13 @@ namespace MDTadusMod.Services
                         accountData.LastErrorMessage = "Password error";
                         return null;
                     }
-                    else
-                    {
-                        // Log the actual error
-                        accountData.LastErrorMessage = string.IsNullOrWhiteSpace(errorValue) 
-                            ? $"Empty error response (Status: {response.StatusCode})" 
-                            : errorValue;
-                        Debug.WriteLine($"API Error for {account.Email}: {accountData.LastErrorMessage}");
-                        return null;
-                    }
+
+                    accountData.LastErrorMessage = string.IsNullOrWhiteSpace(errorValue)
+                        ? $"Empty error response (Status: {response.StatusCode})"
+                        : errorValue;
+
+                    _logger.LogWarning("API Error: {Error}", accountData.LastErrorMessage);
+                    return null;
                 }
 
                 if (response.IsSuccessStatusCode && xml.Root?.Element("AccessToken") != null)
@@ -455,13 +468,11 @@ namespace MDTadusMod.Services
             }
             catch (System.Xml.XmlException ex)
             {
-                // Response was not valid XML
-                Debug.WriteLine($"XML parse error for {account.Email}: {ex.Message}");
-                Debug.WriteLine($"Response content: {responseString}");
+                LogException("XML parse error", ex);
+                _logger.LogDebug("Response content (invalid XML) length={Length}", responseString?.Length ?? 0);
                 accountData.LastErrorMessage = $"Invalid XML response: {ex.Message}";
             }
 
-            // If we've reached here, the request failed for a non-specific reason.
             if (!response.IsSuccessStatusCode)
             {
                 accountData.LastErrorMessage = $"HTTP {response.StatusCode}: {response.ReasonPhrase}";
@@ -471,5 +482,81 @@ namespace MDTadusMod.Services
             return null;
         }
 
+        // ---------- Safe numeric parsing helpers ----------
+
+        private static int SafeInt(XElement el)
+        {
+            if (el == null) return 0;
+            return SafeInt(el.Value);
+        }
+
+        private static int SafeIntAttr(XAttribute attr)
+        {
+            if (attr == null) return 0;
+            return SafeInt(attr.Value);
+        }
+
+        private static int SafeInt(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return 0;
+
+            var t = s.Trim();
+
+            if (long.TryParse(t, NumberStyles.Integer, CultureInfo.InvariantCulture, out var l))
+            {
+                if (l > int.MaxValue) return int.MaxValue;
+                if (l < int.MinValue) return int.MinValue;
+                return (int)l;
+            }
+
+            if (double.TryParse(t, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var d))
+            {
+                if (d > int.MaxValue) return int.MaxValue;
+                if (d < int.MinValue) return int.MinValue;
+                return (int)System.Math.Truncate(d);
+            }
+
+            if (t.StartsWith("0x", StringComparison.OrdinalIgnoreCase) &&
+                long.TryParse(t.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out l))
+            {
+                if (l > int.MaxValue) return int.MaxValue;
+                if (l < int.MinValue) return int.MinValue;
+                return (int)l;
+            }
+
+            return 0;
+        }
+
+        // ---------- Logging helpers (mirroring ReloadQueue style) ----------
+
+        private void Log(string message, LogLevel level = LogLevel.Information)
+        {
+            var stamped = $"[{DateTime.UtcNow:O}] [RotmgApi] {message}";
+            switch (level)
+            {
+                case LogLevel.Warning:
+                    _logger.LogWarning("{Message}", stamped);
+                    break;
+                case LogLevel.Error:
+                case LogLevel.Critical:
+                    _logger.LogError("{Message}", stamped);
+                    break;
+                case LogLevel.Debug:
+                    _logger.LogDebug("{Message}", stamped);
+                    break;
+                case LogLevel.Trace:
+                    _logger.LogTrace("{Message}", stamped);
+                    break;
+                default:
+                    _logger.LogInformation("{Message}", stamped);
+                    break;
+            }
+        }
+
+        private void LogException(string context, Exception ex)
+        {
+            var line = $"[{DateTime.UtcNow:O}] [RotmgApi] {context}: {ex.GetType().Name}: {ex.Message}";
+            _logger.LogError(ex, "{Message}", line);
+        }
     }
 }
