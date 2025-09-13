@@ -110,7 +110,7 @@ namespace MDTadusMod.Services
                     ["RunId"] = _runId
                 });
 
-                Log($"=== PROCESS START (RunId={_runId}) QueueCount={_queue.Count} ===");
+                Log($"=== PROCESS START === QueueCount={_queue.Count}");
 
                 // If we're still in a lockout, schedule resume and exit early.
                 if (_loginLimitUntil is DateTime until && DateTime.UtcNow < until)
@@ -220,7 +220,7 @@ namespace MDTadusMod.Services
                 }
 
                 var paused = _resumeTask != null || (_loginLimitUntil.HasValue && DateTime.UtcNow < _loginLimitUntil.Value);
-                Log($"=== PROCESS END (RunId={_runId}) Success={successCount} Errors={errorCount} Paused={paused} QueueCount={_queue.Count} ===");
+                Log($"=== PROCESS END === Success={successCount} Errors={errorCount} Paused={paused} QueueCount={_queue.Count}");
 
                 if (!cancellationToken.IsCancellationRequested && _resumeTask == null)
                 {
@@ -290,28 +290,28 @@ namespace MDTadusMod.Services
 
         private void Log(string message, LogLevel level = LogLevel.Information)
         {
-            var stamped = $"[{DateTime.UtcNow:O}] [ReloadQueue] [Run:{_runId}] {message}";
-            OnStatusChanged?.Invoke(stamped);
+            // Send concise message to UI and providers; providers add timestamp/category.
+            OnStatusChanged?.Invoke(message);
             switch (level)
             {
                 case LogLevel.Warning:
-                    _logger.LogWarning("{Message}", stamped);
+                    _logger.LogWarning("{Message}", message);
                     break;
                 case LogLevel.Error:
                 case LogLevel.Critical:
-                    _logger.LogError("{Message}", stamped);
+                    _logger.LogError("{Message}", message);
                     break;
                 default:
-                    _logger.LogInformation("{Message}", stamped);
+                    _logger.LogInformation("{Message}", message);
                     break;
             }
         }
 
         private void LogException(string context, Exception ex)
         {
-            var uiLine = $"[{DateTime.UtcNow:O}] [ReloadQueue] [Run:{_runId}] {context}: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}";
+            var uiLine = $"{context}: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}";
             OnStatusChanged?.Invoke(uiLine);
-            _logger.LogError(ex, "[ReloadQueue] [Run:{RunId}] {Context}", _runId, context);
+            _logger.LogError(ex, "{Context}", context);
         }
 
         private class ReloadTask
