@@ -10,6 +10,10 @@
         <input type="checkbox" @bind="includeRenderer" />
         Include RenderTree.Renderer logs
     </label>
+    <label style="margin-left:1rem;">
+        <input type="checkbox" @bind="includeHttpClientDefault" />
+        Include System.Net.Http.HttpClient.Default logs
+    </label>
 </div>
 
 <p>Entries: @FilteredCount @lastRefreshedText</p>
@@ -23,6 +27,7 @@
     List<string> allLines = new();
     DateTimeOffset lastRefreshed;
     bool includeRenderer = false;
+    bool includeHttpClientDefault = false;
 
     protected override void OnInitialized()
     {
@@ -41,10 +46,19 @@
     static bool IsRendererLine(string line) =>
         line?.Contains("Microsoft.AspNetCore.Components.RenderTree.Renderer", StringComparison.Ordinal) == true;
 
-    IEnumerable<string> FilteredLines =>
-        includeRenderer ? allLines : allLines.Where(l => !IsRendererLine(l));
+    static bool IsHttpClientDefaultLine(string line) =>
+        // Matches both .LogicalHandler and .ClientHandler categories for the Default client
+        line?.Contains("System.Net.Http.HttpClient.Default", StringComparison.Ordinal) == true;
 
-    int FilteredCount => includeRenderer ? allLines.Count : allLines.Count(l => !IsRendererLine(l));
+    IEnumerable<string> FilteredLines =>
+        allLines.Where(l =>
+            (includeRenderer || !IsRendererLine(l)) &&
+            (includeHttpClientDefault || !IsHttpClientDefaultLine(l)));
+
+    int FilteredCount =>
+        allLines.Count(l =>
+            (includeRenderer || !IsRendererLine(l)) &&
+            (includeHttpClientDefault || !IsHttpClientDefaultLine(l)));
 
     async Task ShareAsync()
     {
