@@ -223,7 +223,43 @@ namespace MDTadusMod.Services
         public static async Task<string> GetPCStatName(int id)
         {
             await (_initializationTask ?? Task.CompletedTask);
-            return _pcStatIdToNameMap.GetValueOrDefault(id, $"#{id}");
+
+            if (_pcStatIdToNameMap.TryGetValue(id, out var name) && !string.IsNullOrWhiteSpace(name))
+                return name;
+
+            // Fallback: find the string id whose index matches, then humanize it
+            var kv = _pcStatNameToIdMap.FirstOrDefault(p => p.Value == id);
+            if (!string.IsNullOrWhiteSpace(kv.Key))
+            {
+                var friendly = HumanizeStatKey(kv.Key);
+                _pcStatIdToNameMap[id] = friendly; // cache for future calls
+                return friendly;
+            }
+
+            return $"#{id}";
+        }
+
+        private static string HumanizeStatKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return "Stat";
+
+            // Replace separators
+            var s = key.Replace('_', ' ').Replace('-', ' ');
+
+            // Insert spaces before capitals in CamelCase
+            var sb = new System.Text.StringBuilder(s.Length * 2);
+            char prev = '\0';
+            foreach (var c in s)
+            {
+                if (char.IsUpper(c) && prev != '\0' && prev != ' ' && !char.IsUpper(prev))
+                    sb.Append(' ');
+                sb.Append(c);
+                prev = c;
+            }
+
+            // Normalize spacing and decode any HTML entities
+            var normalized = System.Text.RegularExpressions.Regex.Replace(sb.ToString(), @"\s+", " ").Trim();
+            return System.Net.WebUtility.HtmlDecode(normalized);
         }
 
         public static async Task<Dictionary<string, int>> GetPCStatNameToIdMap()
