@@ -23,7 +23,7 @@
                     <input type="number"
                            id="@property.Name"
                            value="@Convert.ToInt32(property.GetValue(SettingsManager.GlobalSettings) ?? 0)"
-                           min="100" max="400" step="10"
+                           min="100" max="720" step="10"
                            @onchange="(e) => UpdateGlobalSetting(property.Name, e.Value)" />
                 }
                 else if (property.PropertyType == typeof(bool))
