@@ -230,6 +230,43 @@
         UnachievedGoals.Clear();
         _pcStatIdToNameLocal = new Dictionary<int, string>();
 
+        // Ensure AdditionalStats have readable names (fills blanks/missing)
+        if (VO.AdditionalStats && Character?.ParsedPCStats != null && Character.ParsedPCStats.Count > 0)
+        {
+            try
+            {
+                var needed = Character.ParsedPCStats.Keys
+                    .Where(id =>
+                    {
+                        if (_pcStatIdToNameLocal.ContainsKey(id)) return false;
+                        if (PCStatIdToNameMap != null && PCStatIdToNameMap.TryGetValue(id, out var n))
+                            return string.IsNullOrWhiteSpace(n);
+                        return true;
+                    })
+                    .ToList();
+
+                if (needed.Count > 0)
+                {
+                    var fetched = await Task.WhenAll(needed.Select(async id =>
+                    {
+                        var name = await SafeGetPCStatName(id);
+                        return new { id, name };
+                    }));
+
+                    foreach (var f in fetched)
+                    {
+                        _pcStatIdToNameLocal[f.id] = f.name;
+                        // Also patch the incoming map so subsequent renders reuse it
+                        PCStatIdToNameMap[f.id] = f.name;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CharacterCard] Failed to fetch AdditionalStats names: {ex.Message}");
+            }
+        }
+
         if (VO.AdditionalGoals)
         {
             try
@@ -399,50 +436,87 @@
     private string BuildRequirementText(FameBonus bonus, Dictionary<string, int> statNameToIdMap)
     {
         if (bonus.Condition == null || bonus.Condition.Length == 0)
-            return "No conditions specified";
+            return string.Empty;
 
         var parts = new List<string>();
 
         foreach (var cond in bonus.Condition)
         {
+            // Handle special non-stat conditions
+            if (string.Equals(cond.Value, "FirstCharacter", StringComparison.OrdinalIgnoreCase))
+            {
+                if (Character.Id != 0)
+                    parts.Add("First character");
+                continue;
+            }
+            if (string.Equals(cond.Value, "MaxedStat", StringComparison.OrdinalIgnoreCase))
+            {
+                if (MaxedStats.Count < 8)
+                    parts.Add("Max all stats (8/8)");
+                continue;
+            }
+
+            // Repeatable stat conditions -> always show distance to next threshold
             if (bonus.Repeatable && cond.threshold > 0 && !string.IsNullOrWhiteSpace(cond.stat))
             {
                 var statDisp = GetStatDisplayName(cond.stat, statNameToIdMap);
                 long current = GetStatValue(cond.stat, statNameToIdMap);
+
+                long toNext;
                 if (current <= 0)
                 {
-                    parts.Add($"Reach {FormatNumber(cond.threshold)} {statDisp}");
+                    toNext = cond.threshold;
                 }
                 else
                 {
-                    long toNext = cond.threshold - (current % cond.threshold);
-                    if (toNext == cond.threshold) toNext = 0;
-                    parts.Add(toNext > 0
-                        ? $"{FormatNumber(toNext)} more {statDisp} to next bonus (current: {FormatNumber(current)})"
-                        : $"Next bonus at +@FormatNumber(cond.threshold) {statDisp} (current: {FormatNumber(current)})");
+                    long mod = current % cond.threshold;
+                    toNext = mod == 0 ? cond.threshold : (cond.threshold - mod);
                 }
+
+                parts.Add($"{FormatNumber(toNext)} more {statDisp} to next bonus (current: {FormatNumber(current)})");
                 continue;
             }
 
+            // Non-repeatable stat conditions -> only show if not satisfied
+            if (string.IsNullOrWhiteSpace(cond.stat))
+                continue;
+
             var statName = GetStatDisplayName(cond.stat, statNameToIdMap);
-            if (cond.threshold <= 1)
+            long currentVal = GetStatValue(cond.stat, statNameToIdMap);
+            int threshold = cond.threshold;
+            var cmp = string.IsNullOrWhiteSpace(cond.Value) ? "gte" : cond.Value.ToLowerInvariant();
+
+            bool satisfied;
+            if (threshold <= 1)
             {
-                parts.Add(statName);
+                satisfied = currentVal >= 1;
+                if (!satisfied)
+                    parts.Add(statName);
             }
             else
             {
-                var cmp = string.IsNullOrWhiteSpace(cond.Value) ? "gte" : cond.Value.ToLowerInvariant();
-                string text = cmp switch
+                satisfied = cmp switch
                 {
-                    "lte" => $"{statName} ≤ {FormatNumber(cond.threshold)}",
-                    "eq"  => $"{statName} = {FormatNumber(cond.threshold)}",
-                    _     => $"{statName} ≥ {FormatNumber(cond.threshold)}"
+                    "lte" => currentVal <= threshold,
+                    "eq"  => currentVal == threshold,
+                    _     => currentVal >= threshold
                 };
-                parts.Add(text);
+
+                if (!satisfied)
+                {
+                    string text = cmp switch
+                    {
+                        "lte" => $"{statName} ≤ {FormatNumber(threshold)}",
+                        "eq"  => $"{statName} = {FormatNumber(threshold)}",
+                        _     => $"{statName} ≥ {FormatNumber(threshold)}"
+                    };
+                    parts.Add(text);
+                }
             }
         }
 
-        return DecodeHtml(string.Join("; ", parts));
+        var result = string.Join("; ", parts.Where(p => !string.IsNullOrWhiteSpace(p)));
+        return DecodeHtml(result);
     }
 
     private bool TryGetParentStatName(int id, out string name)
@@ -538,7 +612,13 @@
 
     private string GetPCStatName(int statId)
     {
-        return PCStatIdToNameMap.GetValueOrDefault(statId, $"#{statId}");
+        if (_pcStatIdToNameLocal.TryGetValue(statId, out var local) && !string.IsNullOrWhiteSpace(local))
+            return DecodeHtml(local);
+
+        var name = PCStatIdToNameMap.GetValueOrDefault(statId, $"#{statId}");
+        if (string.IsNullOrWhiteSpace(name))
+            return $"#{statId}";
+        return DecodeHtml(name);
     }
 
     private ContainerDisplayType GetDisplayType(string containerPropertyName)
