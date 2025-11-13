@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions; // + added
 
 namespace MDTadusMod.Services
 {
@@ -15,12 +16,14 @@ namespace MDTadusMod.Services
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<RotmgApiService> _logger;
+        private readonly ILogBuffer _logBuffer; // + added
         private const string ClientToken = "0";
 
-        public RotmgApiService(HttpClient httpClient, ILogger<RotmgApiService> logger)
+        public RotmgApiService(HttpClient httpClient, ILogger<RotmgApiService> logger, ILogBuffer logBuffer) // + inject ILogBuffer
         {
             _httpClient = httpClient;
             _logger = logger;
+            _logBuffer = logBuffer;
         }
 
         private static bool IsLockout(string s) =>
@@ -71,13 +74,22 @@ namespace MDTadusMod.Services
             {
                 var content = await charListResponse.Content.ReadAsStringAsync();
                 Log($"Fetched character list (len={content?.Length ?? 0}).", LogLevel.Debug);
+
+                // + log sanitized, truncated body to ILogBuffer
+                LogBodyToBuffer("CharList response", content);
+
                 ParseCharListXml(content, newAccountData);
             }
             else
             {
+                // + capture error body as well
+                var errorBody = await charListResponse.Content.ReadAsStringAsync();
                 var errorMsg = $"Failed to fetch character list: {charListResponse.ReasonPhrase}";
                 newAccountData.LastErrorMessage = errorMsg;
                 Log(errorMsg, LogLevel.Warning);
+
+                LogBodyToBuffer("CharList error body", errorBody);
+
                 return existingAccountData ?? newAccountData;
             }
 
@@ -439,6 +451,9 @@ namespace MDTadusMod.Services
             // Keep at Debug; flip to Trace or shorten if too noisy
             _logger.LogDebug("Verify response Status={Status} Length={Length}", response.StatusCode, responseString?.Length ?? 0);
 
+            // + log sanitized, truncated verify body to ILogBuffer
+            LogBodyToBuffer("VerifyAccount response", responseString);
+
             try
             {
                 var xml = XDocument.Parse(responseString);
@@ -557,6 +572,34 @@ namespace MDTadusMod.Services
         {
             var line = $"[{DateTime.UtcNow:O}] [RotmgApi] {context}: {ex.GetType().Name}: {ex.Message}";
             _logger.LogError(ex, "{Message}", line);
+        }
+
+        // +++ New helpers to log API bodies into ILogBuffer safely +++
+        private void LogBodyToBuffer(string title, string? body, int maxLen = 2048)
+        {
+            if (string.IsNullOrEmpty(body))
+            {
+                _logBuffer.Log(LogLevel.Debug, $"{title}: <empty>", scope: "RotmgApi");
+                return;
+            }
+
+            var sanitized = SanitizeSensitiveXml(body);
+            var truncated = Truncate(sanitized, maxLen);
+            _logBuffer.Log(LogLevel.Debug, $"{title} (captured {Math.Min(body.Length, maxLen)}/{body.Length} chars):\n{truncated}", scope: "RotmgApi");
+        }
+
+        private static string Truncate(string s, int max) =>
+            string.IsNullOrEmpty(s) || s.Length <= max ? s : s.Substring(0, max) + "…";
+
+        private static string SanitizeSensitiveXml(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+            var redacted = s;
+            // redact common secret-like fields
+            redacted = Regex.Replace(redacted, "(?is)(<AccessToken>)(.*?)(</AccessToken>)", "$1***REDACTED***$3");
+            redacted = Regex.Replace(redacted, "(?is)(<Password>)(.*?)(</Password>)", "$1***REDACTED***$3");
+            redacted = Regex.Replace(redacted, "(?is)(<Secret>)(.*?)(</Secret>)", "$1***REDACTED***$3");
+            return redacted;
         }
     }
 }
