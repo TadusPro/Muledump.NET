@@ -34,7 +34,7 @@ button {
     width: 25px;
 }
 
-.editbtn:hover, .btn-add-new:hover {
+.editbtn:hover, .btn-add-new:hover, .btn-import:hover {
     background-color: #040f51;
     color: #22b7da;
 }
@@ -80,22 +80,31 @@ h1 {
     margin-left: 18px
 }
 
+/* Updated layout */
 .controls-container {
     display: flex;
-    align-items: center;
+    align-items: flex-start;     /* top-align items */
+    justify-content: flex-start; /* start from left */
     width: 100%;
-    justify-content: space-between;
-    padding-left: 18px; /* Adds 20px of padding on the left and right */
-    padding-right: 5px; /* Adds 20px of padding on the left and right */
-    box-sizing: border-box; /* Ensures padding is included in the element's total width */
+    padding-left: 18px;
+    padding-right: 5px;
+    box-sizing: border-box;
+    gap: 8px;                   /* gap between the right-side items */
+}
+/* Push everything after the first child to the right edge */
+.controls-container > :first-child {
+    margin-right: auto;
 }
 
-.btn-add-new {
+.btn-add-new, .btn-import {
     width: fit-content;
     border: #004db4 solid 2px;
     background-color: #0e1622;
     color: #2386ff;
 }
 
-
+.import-result {
+    padding-left: 18px;
+    padding-top: 9px;
+}
 

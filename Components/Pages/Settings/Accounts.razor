@@ -1,5 +1,6 @@
 ﻿@page "/settings/accounts"
 @inject Services.AccountService AccountSvc
+@inject Services.AccountImportService ImportSvc
 @inject NavigationManager Navigation
 
 <div class="main">
@@ -54,16 +55,28 @@
             </table>
             <div class="controls-container">
                 <input class="search-bar" type="text" placeholder="Search..." @bind="searchTerm" @bind:event="oninput" />
+                <button class="btn-import" @onclick="ImportAccounts">Import</button>
                 <button class="btn-add-new" @onclick="AddNewAccount">Add New Account</button>
+               
             </div>
+            @if (showImportMessage && !string.IsNullOrWhiteSpace(importMessage))
+            {
+                <div class="import-result">
+                    <span>
+                        @importMessage
+                    </span>
+                </div>
+            }
         </div>
-
     }
 </div>
 
 @code {
     private List<MDTadusMod.Data.Account> accounts;
     private string searchTerm = string.Empty;
+    private string? importMessage;
+    private bool showImportMessage;
+    private CancellationTokenSource? _importMsgCts;
 
     private IEnumerable<MDTadusMod.Data.Account> filteredAccounts =>
         accounts?.Where(a => string.IsNullOrWhiteSpace(searchTerm) ||
@@ -83,6 +96,7 @@
     {
         Navigation.NavigateTo($"/settings/accounts/edit/{accountId}");
     }
+
     private async Task DeleteAccount(Guid accountId)
     {
         var account = accounts.FirstOrDefault(a => a.Id == accountId);
@@ -111,6 +125,58 @@
         {
             (accounts[index], accounts[index + 1]) = (accounts[index + 1], accounts[index]);
             await AccountSvc.SaveAccountsAsync(accounts);
+        }
+    }
+
+    private async Task ImportAccounts()
+    {
+        if (accounts is null)
+            accounts = await AccountSvc.GetAccountsAsync();
+
+        var result = await ImportSvc.ImportViaFilePickerAsync(accounts);
+        var message = BuildImportMessage(result);
+        await ShowImportMessage(message);
+        StateHasChanged();
+    }
+
+    private static string BuildImportMessage(Services.AccountImportService.ImportResult result)
+    {
+        if (result.Total <= 0)
+            return "Found no accounts.";
+
+        var parts = new List<string>
+        {
+            $"Added {result.Added} {(result.Added == 1 ? "account" : "accounts")}"
+        };
+
+        if (result.Duplicates > 0)
+            parts.Add($"skipped {result.Duplicates} {(result.Duplicates == 1 ? "account" : "accounts")}");
+
+        if (result.Invalid > 0)
+            parts.Add($"{result.Invalid} {(result.Invalid == 1 ? "line" : "lines")} invalid");
+
+        return string.Join(", ", parts) + ".";
+    }
+
+    private async Task ShowImportMessage(string text)
+    {
+        _importMsgCts?.Cancel();
+        _importMsgCts?.Dispose();
+        _importMsgCts = new CancellationTokenSource();
+
+        importMessage = text;
+        showImportMessage = true;
+        StateHasChanged();
+
+        try
+        {
+            await Task.Delay(20000, _importMsgCts.Token);
+            showImportMessage = false;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+            // ignore
         }
     }
 }

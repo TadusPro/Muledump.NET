@@ -74,6 +74,7 @@ namespace MDTadusMod
             builder.Services.AddSingleton<SettingsService>();
             builder.Services.AddSingleton<UpdaterService>();
             builder.Services.AddSingleton<ReloadQueueService>();
+            builder.Services.AddSingleton<AccountImportService>();
             builder.Services.AddHttpClient();
 
             // Logging buffer first

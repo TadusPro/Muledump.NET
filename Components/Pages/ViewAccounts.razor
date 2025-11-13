@@ -7,6 +7,7 @@
 @inject NavigationManager NavManager
 @inject Services.SettingsService SettingsManager
 @inject IJSRuntime JS
+@inject Services.AccountImportService ImportSvc
 @implements IDisposable
 
 @if (accounts == null)
@@ -19,7 +20,11 @@ else if (!accounts.Any())
         <div class="fresh-user">
             <h1>Welcome to Muledump.NET</h1>
             <p>Your items and stat focused account manager for RotMG. View detailed stats for your characters and all items across your inventories.</p>
-            <button @onclick="GoToAddAccount">Add Your First Account</button>
+            <div>
+                <button @onclick="GoToAddAccount">Add Your First Account</button>
+                <span style="margin-left:8px"> or </span>
+                <button @onclick="ImportFirstAccounts" style="margin-left:8px">Import</button>
+            </div>
         </div>
     </div>
 }
@@ -100,6 +105,15 @@ else
 
     private void GoToAddAccount() => NavManager.NavigateTo("/settings/accounts/new");
     private void ViewDetails(Guid accountId) => NavManager.NavigateTo($"/account-details/{accountId}");
+
+    private async Task ImportFirstAccounts()
+    {
+        accounts ??= await AccountSvc.GetAccountsAsync();
+        var _ = await ImportSvc.ImportViaFilePickerAsync(accounts);
+        // Reload from storage to reflect the latest saved state
+        accounts = await AccountSvc.GetAccountsAsync();
+        StateHasChanged();
+    }
 
     private async Task RefreshAccountData(MDTadusMod.Data.Account account)
     {
