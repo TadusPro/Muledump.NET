@@ -30,7 +30,9 @@ UninstallDisplayName={#MyAppName}
 SetupLogging=yes
 
 [Files]
-Source: "..\..\publish\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion replacesameversion
+; Exclude bootstrapper from app folder; use replacesameversion (no ignoreversion)
+Source: "..\..\publish\*"; DestDir: "{app}"; Excludes: "MicrosoftEdgeWebview2Setup.exe"; Flags: recursesubdirs createallsubdirs replacesameversion
+; Bootstrapper goes to temp and is deleted after install
 Source: "..\..\publish\MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: ignoreversion deleteafterinstall
 
 [Icons]
