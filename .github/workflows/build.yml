@@ -12,6 +12,9 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      DOTNET_MULTILEVEL_LOOKUP: '0'
+      DOTNET_NOLOGO: 'true'
 
     steps:
       - name: Checkout Muledump.NET repo
@@ -25,7 +28,7 @@ jobs:
           repository: TadusPro/RotMGAssetExtractor
           path: RotMGAssetExtractor_temp
 
-      - name: Move extractor up one level so path matches '..\\RotMGAssetExtractor'
+      - name: Move extractor up one level so path matches '..\RotMGAssetExtractor'
         shell: pwsh
         run: Move-Item -Force RotMGAssetExtractor_temp ..\RotMGAssetExtractor
 
@@ -34,8 +37,11 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore deps
-        run: dotnet restore
+      - name: Install MAUI workload (8.x)
+        run: dotnet workload install maui
+
+      - name: Restore deps (Windows TFM only)
+        run: dotnet restore -p:TargetFramework=net8.0-windows10.0.19041.0
 
       - name: Publish Muledump.NET (same command you run locally)
         run: |
@@ -50,7 +56,7 @@ jobs:
         run: Compress-Archive -Path "publish/*" -DestinationPath "Muledump.NET-portable-windows-x64.zip"
 
       - name: Install & build installer (Inno Setup)
-        id: build_installer # Add an id to this step
+        id: build_installer
         shell: pwsh
         run: |
           choco install innosetup -y
@@ -59,11 +65,10 @@ jobs:
           } else {
             $v = "0.0.${{ github.run_number }}"
           }
-          # We don't pass the hash here anymore
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .github\workflows\Muledump.iss /DMyAppVersion=$v
 
       - name: Create SHA256 for installer and pass to next step
-        id: hash_installer # Add an id to this step
+        id: hash_installer
         shell: pwsh
         run: |
           $f = "installer/Muledump.NET-setup-windows-x64.exe"
@@ -79,7 +84,6 @@ jobs:
           } else {
             $v = "0.0.${{ github.run_number }}"
           }
-          # Now we pass the hash
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .github\workflows\Muledump.iss /DMyAppVersion=$v /DInstallerHash="${{ env.INSTALLER_HASH }}"
 
       - name: Upload build artifacts
