@@ -3,7 +3,6 @@
     transition: box-shadow 0.2s ease-in-out;
     display: flex;
     flex-direction: column;
-    width: max-content;
     background-color: #333;
     height: fit-content;
 }
@@ -104,7 +103,7 @@ header .scont .star { font-size:1.2em; line-height:0; margin:0 0 0 .2em; }
     flex-wrap: wrap;
     gap: 4px;
     margin-top: 6px;
-    width: max-content;
+    width: 100%;
 }
 
 .back-btn {
@@ -116,5 +115,15 @@ header .scont .star { font-size:1.2em; line-height:0; margin:0 0 0 .2em; }
     cursor:pointer;
     height:26px;
     padding:0 10px;
+}
+
+/* Separator styling for shiny section (matches AccountCard top border look) */
+.mule details.shiny-section {
+    border-top: 2px solid #555;
+    padding-top: 6px;
+    padding-bottom: 3px;
+}
+.mule details.shiny-section > summary {
+    outline: none;
 }
 

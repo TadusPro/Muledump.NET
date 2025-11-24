@@ -53,26 +53,28 @@ else
             </div>
         </header>
 
-        <details open>
-            <summary style="cursor:pointer;font-weight:bold;">
-                Shiny Items Progress (@ownedShinyCount / @totalShinyCount)
+        <!-- Added shiny-section class for top border separator -->
+        <details class="shiny-section" open>
+            <summary class="shiny-summary" style="cursor:pointer;font-weight:bold;">
+                @if (shinyLoading)
+                {
+                    <span>Scanning shiny items…</span>
+                }
+                else if (totalShinyCount == 0)
+                {
+                    <span>No shiny items defined</span>
+                }
+                else
+                {
+                    <span>
+                        Shiny Items (@ownedShinyCount / @totalShinyCount) |
+                        @(ownedShinyCount * 100 / (totalShinyCount == 0 ? 1 : totalShinyCount))% complete
+                    </span>
+                }
             </summary>
-            @if (shinyLoading)
-            {
-                <p><em>Scanning shiny items...</em></p>
-            }
-            else if (totalShinyCount == 0)
-            {
-                <p>No shiny item definitions found.</p>
-            }
-            else
-            {
-                <p>
-                    Owned: @ownedShinyCount |
-                    Missing: @missingShinyCount
-                    (@(ownedShinyCount * 100 / (totalShinyCount == 0 ? 1 : totalShinyCount))% complete)
-                </p>
 
+            @if (!shinyLoading && totalShinyCount > 0)
+            {
                 <div class="shiny-grid">
                     @foreach (var entry in combinedShinyEntries)
                     {
