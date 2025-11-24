@@ -1,11 +1,10 @@
-@page "/accounts/{AccountId:guid}"
+﻿@page "/accounts/{AccountId:guid}"
 @using System.Linq
 @using MDTadusMod.Data
 @inject MDTadusMod.Services.AccountService AccountSvc
 @inject MDTadusMod.Services.AssetService AssetService
+@inject MDTadusMod.Services.SettingsService SettingsManager
 @inject NavigationManager NavManager
-
-<h3>Account View</h3>
 
 @if (loading)
 {
@@ -17,28 +16,47 @@ else if (notFound)
 }
 else
 {
-    <h4>@(accountData?.Name ?? account?.Email)</h4>
+    var VO = SettingsManager.GlobalOptions;
 
-    @if (accountData == null)
-    {
-        <p>No saved data yet. Refresh from the main view.</p>
-    }
-    else
-    {
-        <div class="summary">
-            <p>
-                Fame: @accountData.Fame |
-                Credits: @accountData.Credits |
-                Stars: @accountData.Star |
-                Characters: @accountData.Characters.Count / @accountData.MaxNumChars
-            </p>
-            <p>
-                Guild: @(string.IsNullOrEmpty(accountData.GuildName) ? "None" : $"{accountData.GuildName} (Rank {accountData.GuildRank})")
-            </p>
-        </div>
+    <div class="mule">
+        @if (!string.IsNullOrEmpty(accountData?.LastErrorMessage))
+        {
+            <div class="warning">
+                <p>@accountData.LastErrorMessage</p>
+                <button @onclick="DismissWarning">X</button>
+            </div>
+        }
+
+        @if (VO.Email)
+        {
+            <input type="text" readonly class="guid" value="@account.Email" />
+        }
+
+        <header>
+            @if (accountData?.Star > 0)
+            {
+                <span class="scont">
+                    <span>@accountData.Star</span>
+                    <span class="star" style="color:@GetStarColor(accountData.Star)">★</span>
+                </span>
+            }
+
+            @if (VO.IGN)
+            {
+                <p class="mule-name" style="grid-column:2">
+                    @(accountData?.Name ?? account.Email)
+                </p>
+            }
+
+            <div class="header-actions" style="grid-column:3;">
+                <button class="header-back-btn" @onclick="Back" title="Back">Back</button>
+            </div>
+        </header>
 
         <details open>
-            <summary style="cursor:pointer;font-weight:bold;">Shiny Items Progress (@ownedShinyCount / @totalShinyCount)</summary>
+            <summary style="cursor:pointer;font-weight:bold;">
+                Shiny Items Progress (@ownedShinyCount / @totalShinyCount)
+            </summary>
             @if (shinyLoading)
             {
                 <p><em>Scanning shiny items...</em></p>
@@ -65,9 +83,7 @@ else
                 </div>
             }
         </details>
-    }
-
-    <button @onclick="Back">Back</button>
+    </div>
 }
 
 @code {
@@ -77,22 +93,18 @@ else
     private AccountData accountData;
     private bool loading = true;
     private bool notFound;
-
     private bool shinyLoading = true;
+
     private HashSet<int> allShinyIds = new();
     private HashSet<int> ownedShinyIds = new();
-    private HashSet<int> missingShinyIds = new();
     private int ownedShinyCount;
     private int missingShinyCount;
     private int totalShinyCount;
-
-    // Unified collection-sorted entries
     private List<(int Id, bool Owned)> combinedShinyEntries = new();
 
     protected override async Task OnInitializedAsync()
     {
-        var accounts = await AccountSvc.GetAccountsAsync();
-        account = accounts.FirstOrDefault(a => a.Id == AccountId);
+        account = (await AccountSvc.GetAccountsAsync()).FirstOrDefault(a => a.Id == AccountId);
         if (account == null)
         {
             notFound = true;
@@ -104,9 +116,7 @@ else
         loading = false;
 
         if (accountData != null)
-        {
             _ = LoadShinyAsync();
-        }
     }
 
     private async Task LoadShinyAsync()
@@ -115,40 +125,34 @@ else
         {
             shinyLoading = true;
             allShinyIds = await AssetService.GetAllShinyItemIdsAsync();
-
             var ownedItemIds = new HashSet<int>();
+
+            void Add(IEnumerable<Item> items)
+            {
+                if (items == null) return;
+                foreach (var it in items) if (it != null) ownedItemIds.Add(it.Id);
+            }
 
             if (accountData.Characters != null)
             {
                 foreach (var ch in accountData.Characters)
-                {
-                    if (ch.EquipmentList != null)
+                    if (ch?.EquipmentList != null)
                         foreach (var it in ch.EquipmentList)
                             if (it != null) ownedItemIds.Add(it.Id);
-                }
             }
 
-            if (accountData.Vault?.Items != null)
-                foreach (var it in accountData.Vault.Items) ownedItemIds.Add(it.Id);
-            if (accountData.MaterialStorage?.Items != null)
-                foreach (var it in accountData.MaterialStorage.Items) ownedItemIds.Add(it.Id);
-            if (accountData.Gifts != null)
-                foreach (var it in accountData.Gifts) ownedItemIds.Add(it.Id);
-            if (accountData.TemporaryGifts != null)
-                foreach (var it in accountData.TemporaryGifts) ownedItemIds.Add(it.Id);
-            if (accountData.Potions != null)
-                foreach (var it in accountData.Potions) ownedItemIds.Add(it.Id);
-            if (accountData.SeasonalPetInventory?.Items != null)
-                foreach (var it in accountData.SeasonalPetInventory.Items) ownedItemIds.Add(it.Id);
-            if (accountData.NonSeasonalPetInventory?.Items != null)
-                foreach (var it in accountData.NonSeasonalPetInventory.Items) ownedItemIds.Add(it.Id);
+            Add(accountData.Vault?.Items);
+            Add(accountData.MaterialStorage?.Items);
+            Add(accountData.Gifts);
+            Add(accountData.TemporaryGifts);
+            Add(accountData.Potions);
+            Add(accountData.SeasonalPetInventory?.Items);
+            Add(accountData.NonSeasonalPetInventory?.Items);
 
             ownedShinyIds = new HashSet<int>(ownedItemIds.Where(id => allShinyIds.Contains(id)));
-            missingShinyIds = new HashSet<int>(allShinyIds.Where(id => !ownedShinyIds.Contains(id)));
-
             ownedShinyCount = ownedShinyIds.Count;
-            missingShinyCount = missingShinyIds.Count;
             totalShinyCount = allShinyIds.Count;
+            missingShinyCount = totalShinyCount - ownedShinyCount;
 
             var collInfo = await AssetService.GetEquipmentCollectionInfoAsync(allShinyIds);
             var iconMap = collInfo.ToDictionary(i => i.TypeId, i => i.CollectionIcon);
@@ -166,5 +170,21 @@ else
         }
     }
 
+    private void DismissWarning()
+    {
+        if (accountData != null)
+            accountData.LastErrorMessage = null;
+    }
+
     private void Back() => NavManager.NavigateTo("/");
+
+    private string GetStarColor(int stars) => stars switch
+    {
+        >= 90 => "#fff",
+        >= 72 => "#ff0",
+        >= 54 => "#f6921d",
+        >= 36 => "#c0262c",
+        >= 18 => "#304cda",
+        _ => "#8997dd"
+    };
 }

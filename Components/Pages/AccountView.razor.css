@@ -1,9 +1,120 @@
+/* Reuse AccountCard header visual language */
+.mule {
+    transition: box-shadow 0.2s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    width: max-content;
+    background-color: #333;
+    height: fit-content;
+}
+
+/* Change column layout so Back button can size itself naturally */
+.mule header {
+    display: grid;
+    grid-template-columns: auto 1fr auto; /* star | name (flex) | back */
+    align-items: center;
+    height: 26px;
+}
+
+.mule header .mule-name {
+    margin: 4px;
+    text-align: center;
+    cursor: default;
+    overflow: hidden;
+    color: #CCC;
+    font: 16px Arial,sans-serif;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+header button {
+    display: inline-block;
+    height: 20px;
+    line-height: 20px;
+    vertical-align: middle;
+    text-align: center;
+    font-size: 14px;
+    color: white;
+    background-color: #545454;
+    cursor: pointer;
+    margin: 2px;
+    padding: 0 10px;
+    border: 0;
+    /* Removed width and overflow that caused truncation */
+    white-space: nowrap;
+}
+
+.mule header .header-actions .header-back-btn {
+    width: auto !important;      /* force override of any earlier width:18px */
+    min-width: 48px;
+    overflow: visible;
+    white-space: nowrap;
+}
+
+header .scont {
+    background-color: #222;
+    border-radius: 5px;
+    padding: 1px 4px;
+    font-weight: normal;
+    font-size: 14px;
+    margin: 2px;
+    color: #CCC;
+    font: 12px Arial,sans-serif;
+}
+header .scont span { font-size:14px; }
+header .scont .star { font-size:1.2em; line-height:0; margin:0 0 0 .2em; }
+
+.guid {
+    color: #ccc;
+    background: #303030;
+    border: solid 1px #888;
+    padding: 2px;
+    font-family: monospace;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.warning {
+    background: #2d1212;
+    border-left: 4px solid #e74c3c;
+    display: flex;
+    font: 16px Arial,sans-serif;
+    height: 26px;
+}
+.warning p {
+    margin: 4px;
+    color: #FFF;
+    text-align: center;
+    flex-grow: 1;
+}
+.warning button {
+    background: #371616;
+    border: 0;
+    font-size: 14px;
+    text-align: center;
+    color: #f5b7b7;
+    cursor: pointer;
+    line-height: 18px;
+    padding: 0 8px;
+    white-space: nowrap;
+}
+
 .shiny-grid {
-    display:flex;
-    flex-wrap:wrap;
-    gap:4px;
-    margin:6px 0 12px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+    width: max-content;
 }
-.shiny-grid.missing {
-    opacity:.85;
+
+.back-btn {
+    margin-top: 8px;
+    width: auto;
+    background:#545454;
+    color:#fff;
+    border:0;
+    cursor:pointer;
+    height:26px;
+    padding:0 10px;
 }
+
