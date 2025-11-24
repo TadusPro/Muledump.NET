@@ -55,39 +55,14 @@ else
                     (@(ownedShinyCount * 100 / (totalShinyCount == 0 ? 1 : totalShinyCount))% complete)
                 </p>
 
-                <details open>
-                    <summary style="cursor:pointer;">Owned (@ownedShinyCount)</summary>
-                    @if (ownedShinyIds.Any())
+                <div class="shiny-grid">
+                    @foreach (var entry in combinedShinyEntries)
                     {
-                        <div class="shiny-grid">
-                            @foreach (var id in ownedShinyIds.OrderBy(i => i))
-                            {
-                                <SpriteCard Type="@id" />
-                            }
-                        </div>
+                        <SpriteCard Type="@entry.Id"
+                                    BackgroundOff="true"
+                                    Transparency="@(entry.Owned ? 1.0 : 0.25)" />
                     }
-                    else
-                    {
-                        <p>None owned yet.</p>
-                    }
-                </details>
-
-                <details>
-                    <summary style="cursor:pointer;">Missing (@missingShinyCount) (sorted by CollectionIcon)</summary>
-                    @if (orderedMissingShinyIds.Any())
-                    {
-                        <div class="shiny-grid missing">
-                            @foreach (var id in orderedMissingShinyIds)
-                            {
-                                <SpriteCard Type="@id" />
-                            }
-                        </div>
-                    }
-                    else
-                    {
-                        <p>All collected. Nice!</p>
-                    }
-                </details>
+                </div>
             }
         </details>
     }
@@ -111,7 +86,8 @@ else
     private int missingShinyCount;
     private int totalShinyCount;
 
-    private List<int> orderedMissingShinyIds = new();
+    // Unified collection-sorted entries
+    private List<(int Id, bool Owned)> combinedShinyEntries = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -174,12 +150,13 @@ else
             missingShinyCount = missingShinyIds.Count;
             totalShinyCount = allShinyIds.Count;
 
-            var collInfo = await AssetService.GetEquipmentCollectionInfoAsync(missingShinyIds);
+            var collInfo = await AssetService.GetEquipmentCollectionInfoAsync(allShinyIds);
             var iconMap = collInfo.ToDictionary(i => i.TypeId, i => i.CollectionIcon);
 
-            orderedMissingShinyIds = missingShinyIds
+            combinedShinyEntries = allShinyIds
                 .OrderBy(id => iconMap.GetValueOrDefault(id, int.MaxValue))
                 .ThenBy(id => id)
+                .Select(id => (id, ownedShinyIds.Contains(id)))
                 .ToList();
         }
         finally
