@@ -1,6 +1,7 @@
 @page "/accounts/{AccountId:guid}"
+@using System.Linq
 @using MDTadusMod.Data
-@inject Services.AccountService AccountSvc
+@inject MDTadusMod.Services.AccountService AccountSvc
 @inject MDTadusMod.Services.AssetService AssetService
 @inject NavigationManager NavManager
 
@@ -102,7 +103,6 @@ else
     private bool loading = true;
     private bool notFound;
 
-    // Shiny tracking
     private bool shinyLoading = true;
     private HashSet<int> allShinyIds = new();
     private HashSet<int> ownedShinyIds = new();
@@ -111,7 +111,6 @@ else
     private int missingShinyCount;
     private int totalShinyCount;
 
-    // Flat, ordered missing list (sorted by CollectionIcon then TypeId)
     private List<int> orderedMissingShinyIds = new();
 
     protected override async Task OnInitializedAsync()
@@ -175,12 +174,11 @@ else
             missingShinyCount = missingShinyIds.Count;
             totalShinyCount = allShinyIds.Count;
 
-            // Fetch collection icons and sort missing list
             var collInfo = await AssetService.GetEquipmentCollectionInfoAsync(missingShinyIds);
             var iconMap = collInfo.ToDictionary(i => i.TypeId, i => i.CollectionIcon);
 
             orderedMissingShinyIds = missingShinyIds
-                .OrderBy(id => iconMap.GetValueOrDefault(id, int.MaxValue)) // unknown icons last
+                .OrderBy(id => iconMap.GetValueOrDefault(id, int.MaxValue))
                 .ThenBy(id => id)
                 .ToList();
         }
