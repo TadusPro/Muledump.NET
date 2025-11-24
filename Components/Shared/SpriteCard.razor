@@ -1,11 +1,12 @@
 @namespace MDTadusMod.Components.Shared
 @using MDTadusMod.Services
 @using System.Diagnostics
+@using System.Globalization
 @inject AssetService AssetService
 
 <div class="sprite-card @(BackgroundOff ? "no-background" : "")"
      type="@Id"
-     style="transform: rotate(@RotationDeg);">
+     style="transform: rotate(@RotationDeg);opacity:@TransparencyString;">
     @if (isLoading)
     {
         <div class="loading-spinner"></div>
@@ -46,6 +47,12 @@
 
     [Parameter]
     public int Count { get; set; } = 0;
+
+    // New transparency (opacity) parameter (0.0 – 1.0)
+    [Parameter]
+    public double Transparency { get; set; } = 1.0;
+
+    private string TransparencyString => Math.Clamp(Transparency, 0.0, 1.0).ToString(CultureInfo.InvariantCulture);
 
     private int Id = -1;
     private string RarityOverlayImage;
